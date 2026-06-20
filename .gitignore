@@ -1,0 +1,8 @@
+node_modules/
+.claude/
+POS MS/
+PREVIOUS VERSION/
+phone app/
+*.log
+.DS_Store
+Thumbs.db
