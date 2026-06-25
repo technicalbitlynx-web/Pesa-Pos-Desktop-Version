@@ -20,6 +20,7 @@
 
 <script type="text/babel" data-presets="env,react" data-plugins="proposal-class-properties,proposal-object-rest-spread,proposal-optional-chaining,proposal-nullish-coalescing-operator">
 const { useState, useEffect, useRef, useMemo } = React;
+const PLATFORM = /android|iphone|ipad|ipod/i.test(navigator.userAgent) ? 'mobile' : 'desktop';
 
 // ─── PesaDB: Hybrid Storage Layer (IndexedDB via Dexie) ──────────────────────
 const _db = new Dexie('PesaPOS_v1');
@@ -1416,6 +1417,9 @@ function SettingsModal({ settings, onClose, onSave, cloudInfo, currentUser, posD
                         {actionMsg && <div style={{marginTop:'6px',fontSize:'0.8rem',color:'#dc2626',fontWeight:600}}>{actionMsg}</div>}
                       </div>
                     )}
+
+                    {/* ── POS Device Credentials ────────────────────────── */}
+                    <CredentialsPanel base={base} licenseKey={key} currentUser={currentUser} />
                   </div>
                 );
               };
@@ -1567,16 +1571,162 @@ function LogoSplashScreen({ onComplete }) {
   );
 }
 
+/* ---------- Credentials Panel (manager creates POS access codes) ---------- */
+function CredentialsPanel({ base, licenseKey, currentUser }) {
+  const [creds,    setCreds]    = React.useState([]);
+  const [loading,  setLoading]  = React.useState(true);
+  const [err,      setErr]      = React.useState('');
+  const [showForm, setShowForm] = React.useState(false);
+  const [slotName, setSlotName] = React.useState('');
+  const [code,     setCode]     = React.useState('');
+  const [pin,      setPin]      = React.useState('');
+  const [formMsg,  setFormMsg]  = React.useState('');
+  const [busy,     setBusy]     = React.useState(false);
+  const [deleting, setDeleting] = React.useState(null); // credential id being deleted
+  const [delPin,   setDelPin]   = React.useState('');
+  const [delMsg,   setDelMsg]   = React.useState('');
+  const [newCode,  setNewCode]  = React.useState(null); // shows the generated code after creation
+
+  const fetchCreds = React.useCallback(async () => {
+    if (!base || !licenseKey) { setLoading(false); return; }
+    setLoading(true); setErr('');
+    try {
+      const r = await fetch(`${base}/api/v1/pos/device-credentials?license_key=${encodeURIComponent(licenseKey)}`);
+      const j = await r.json();
+      if (!r.ok) { setErr(j.message || 'Failed to load'); setLoading(false); return; }
+      setCreds(j.data?.credentials || []);
+    } catch { setErr('Cannot reach server.'); }
+    setLoading(false);
+  }, [base, licenseKey]);
+
+  React.useEffect(() => { fetchCreds(); }, [fetchCreds]);
+
+  const generateCode = () => setCode(String(Math.floor(100000 + Math.random() * 900000)));
+
+  const createCred = async () => {
+    if (!slotName.trim()) { setFormMsg('Enter a slot name.'); return; }
+    if (!/^\d{4,8}$/.test(code)) { setFormMsg('Access code must be 4–8 digits.'); return; }
+    if (!pin.trim()) { setFormMsg('Enter your manager PIN.'); return; }
+    setBusy(true); setFormMsg('');
+    try {
+      const r = await fetch(`${base}/api/v1/pos/device-credentials`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ license_key: licenseKey, manager_username: currentUser?.username, manager_pin: pin, slot_name: slotName.trim(), access_code: code }),
+      });
+      const j = await r.json();
+      if (!r.ok) { setFormMsg(j.message || 'Failed'); setBusy(false); return; }
+      setNewCode(code);
+      setSlotName(''); setCode(''); setPin(''); setShowForm(false);
+      fetchCreds();
+    } catch { setFormMsg('Network error.'); }
+    setBusy(false);
+  };
+
+  const deleteCred = async (id) => {
+    if (!delPin.trim()) { setDelMsg('Enter your manager PIN.'); return; }
+    setBusy(true); setDelMsg('');
+    try {
+      const r = await fetch(`${base}/api/v1/pos/device-credentials/${id}`, {
+        method: 'DELETE', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ license_key: licenseKey, manager_username: currentUser?.username, manager_pin: delPin }),
+      });
+      const j = await r.json();
+      if (!r.ok) { setDelMsg(j.message || 'Failed'); setBusy(false); return; }
+      setDeleting(null); setDelPin(''); fetchCreds();
+    } catch { setDelMsg('Network error.'); }
+    setBusy(false);
+  };
+
+  return (
+    <div style={{marginTop:'1.5rem',borderTop:'1px solid rgba(203,213,225,0.5)',paddingTop:'1.25rem'}}>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'0.75rem'}}>
+        <div>
+          <h3 style={{fontWeight:700,color:'#0f172a',fontSize:'0.9rem',margin:0}}>POS Device Credentials</h3>
+          <p style={{fontSize:'0.75rem',color:'#94a3b8',margin:'2px 0 0'}}>Cashiers enter these codes when setting up a new POS device.</p>
+        </div>
+        <button onClick={()=>{setShowForm(v=>!v);setFormMsg('');if(!code)generateCode();}} style={{padding:'6px 14px',borderRadius:'8px',border:'none',background:'linear-gradient(135deg,#1e3a8a,#3b82f6)',color:'#fff',fontWeight:700,fontSize:'0.78rem',cursor:'pointer',flexShrink:0}}>
+          {showForm ? '✕ Cancel' : '+ Create Code'}
+        </button>
+      </div>
+
+      {newCode && (
+        <div style={{marginBottom:'0.85rem',padding:'10px 14px',borderRadius:'10px',background:'rgba(5,150,105,0.1)',border:'1px solid rgba(5,150,105,0.35)'}}>
+          <div style={{fontWeight:700,color:'#047857',fontSize:'0.82rem',marginBottom:'3px'}}>Credential created! Share this code with your cashier:</div>
+          <div style={{fontFamily:'monospace',fontSize:'1.6rem',fontWeight:800,color:'#065f46',letterSpacing:'0.15em'}}>{newCode}</div>
+          <button onClick={()=>setNewCode(null)} style={{marginTop:'6px',fontSize:'0.72rem',color:'#94a3b8',background:'none',border:'none',cursor:'pointer'}}>Dismiss</button>
+        </div>
+      )}
+
+      {showForm && (
+        <div style={{marginBottom:'1rem',padding:'1rem',borderRadius:'12px',background:'#f8fafc',border:'1px solid rgba(203,213,225,0.6)'}}>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem',marginBottom:'0.75rem'}}>
+            <label style={{fontSize:'0.78rem',fontWeight:600,color:'#475569'}}>Slot Name (e.g. Cashier 1)
+              <input value={slotName} onChange={e=>setSlotName(e.target.value)} placeholder="Cashier Station 1" style={{display:'block',width:'100%',marginTop:'3px',padding:'7px 9px',borderRadius:'7px',border:'1px solid rgba(203,213,225,0.8)',fontSize:'0.84rem',boxSizing:'border-box'}} />
+            </label>
+            <label style={{fontSize:'0.78rem',fontWeight:600,color:'#475569'}}>Access Code (4–8 digits)
+              <div style={{display:'flex',gap:'5px',marginTop:'3px'}}>
+                <input value={code} onChange={e=>setCode(e.target.value.replace(/\D/g,'').slice(0,8))} inputMode="numeric" maxLength={8} placeholder="123456" style={{flex:1,padding:'7px 9px',borderRadius:'7px',border:'1px solid rgba(203,213,225,0.8)',fontSize:'0.84rem',fontFamily:'monospace',boxSizing:'border-box'}} />
+                <button onClick={generateCode} style={{padding:'0 10px',borderRadius:'7px',border:'1px solid rgba(203,213,225,0.8)',background:'#fff',cursor:'pointer',fontSize:'0.78rem',fontWeight:600,color:'#475569',whiteSpace:'nowrap'}}>↻ New</button>
+              </div>
+            </label>
+          </div>
+          <label style={{fontSize:'0.78rem',fontWeight:600,color:'#475569'}}>Your Manager PIN
+            <input type="password" inputMode="numeric" value={pin} onChange={e=>setPin(e.target.value)} placeholder="PIN" maxLength={6} style={{display:'block',width:'160px',marginTop:'3px',padding:'7px 9px',borderRadius:'7px',border:'1px solid rgba(203,213,225,0.8)',fontSize:'0.84rem'}} onKeyDown={e=>e.key==='Enter'&&createCred()} />
+          </label>
+          {formMsg && <div style={{marginTop:'6px',fontSize:'0.78rem',color:'#dc2626',fontWeight:600}}>{formMsg}</div>}
+          <button onClick={createCred} disabled={busy} style={{marginTop:'0.75rem',padding:'8px 20px',borderRadius:'8px',border:'none',background:'linear-gradient(135deg,#1e3a8a,#3b82f6)',color:'#fff',fontWeight:700,fontSize:'0.82rem',cursor:'pointer',opacity:busy?0.7:1}}>
+            {busy ? 'Creating…' : 'Create Credential'}
+          </button>
+        </div>
+      )}
+
+      {loading && <div style={{color:'#94a3b8',fontSize:'0.82rem'}}>Loading credentials…</div>}
+      {err    && <div style={{color:'#dc2626',fontSize:'0.82rem'}}>{err}</div>}
+      {!loading && !err && creds.length === 0 && <div style={{color:'#94a3b8',fontSize:'0.82rem'}}>No credentials yet. Create one above.</div>}
+
+      {creds.map(c => (
+        <div key={c.id} style={{display:'flex',alignItems:'center',gap:'10px',padding:'9px 12px',borderRadius:'9px',border:'1px solid rgba(203,213,225,0.5)',marginBottom:'5px',background:'#fff'}}>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontWeight:700,fontSize:'0.86rem',color:'#0f172a'}}>{c.slot_name}</div>
+            <div style={{fontSize:'0.73rem',color:'#64748b',marginTop:'1px'}}>
+              {c.device_id ? <span style={{color:'#059669',fontWeight:600}}>✓ Claimed</span> : <span style={{color:'#f59e0b',fontWeight:600}}>⏳ Unclaimed</span>}
+              {' · '}Created {new Date(c.created_at).toLocaleDateString()}
+            </div>
+          </div>
+          {deleting === c.id ? (
+            <div style={{display:'flex',gap:'5px',alignItems:'center'}}>
+              <input type="password" inputMode="numeric" value={delPin} onChange={e=>setDelPin(e.target.value)} placeholder="PIN" maxLength={6} style={{padding:'5px 8px',borderRadius:'7px',border:'1px solid rgba(203,213,225,0.8)',fontSize:'0.8rem',width:'80px'}} onKeyDown={e=>e.key==='Enter'&&deleteCred(c.id)} />
+              <button onClick={()=>deleteCred(c.id)} disabled={busy} style={{padding:'5px 10px',borderRadius:'7px',border:'none',background:'#dc2626',color:'#fff',fontSize:'0.76rem',fontWeight:700,cursor:'pointer'}}>Delete</button>
+              <button onClick={()=>{setDeleting(null);setDelPin('');setDelMsg('');}} style={{padding:'5px 8px',borderRadius:'7px',border:'1px solid rgba(203,213,225,0.7)',background:'#fff',color:'#475569',fontSize:'0.76rem',cursor:'pointer'}}>Cancel</button>
+              {delMsg && <span style={{fontSize:'0.74rem',color:'#dc2626'}}>{delMsg}</span>}
+            </div>
+          ) : (
+            <button onClick={()=>{setDeleting(c.id);setDelPin('');setDelMsg('');}} style={{padding:'5px 12px',borderRadius:'7px',border:'1px solid rgba(239,68,68,0.3)',background:'rgba(239,68,68,0.06)',color:'#dc2626',fontSize:'0.76rem',fontWeight:700,cursor:'pointer',flexShrink:0}}>Delete</button>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /* ---------- Device Setup Screen ---------- */
 function DeviceSetupScreen({ cloudInfo, settings, onComplete }) {
-  const [selecting, setSelecting] = useState(false);
-  const [error, setError]         = useState('');
+  const [step, setStep]               = useState('choose'); // 'choose' | 'manager' | 'pos'
+  const [mgrUsername, setMgrUsername] = useState('');
+  const [mgrPin, setMgrPin]           = useState('');
+  const [accessCode, setAccessCode]   = useState('');
+  const [busy, setBusy]               = useState(false);
+  const [error, setError]             = useState('');
 
   const limits      = cloudInfo?.device_limits || {};
-  const desktopUsed = limits.used_manager_desktops || 0;
-  const desktopMax  = limits.manager_desktop ?? null;
-  const desktopAvail = desktopMax === null ? null : desktopMax - desktopUsed;
-  const desktopFull  = desktopMax !== null && desktopAvail <= 0;
+  const mgrKey      = PLATFORM === 'mobile' ? 'manager_mobile' : 'manager_desktop';
+  const usedKey     = PLATFORM === 'mobile' ? 'used_manager_mobiles' : 'used_manager_desktops';
+  const mgrUsed     = limits[usedKey] || 0;
+  const mgrMax      = limits[mgrKey] ?? null;
+  const mgrAvail    = mgrMax === null ? null : mgrMax - mgrUsed;
+  const mgrFull     = mgrMax !== null && mgrAvail <= 0;
+
+  const base = (settings?.posmsUrl || '').replace(/\/api\/v1.*$/, '').replace(/\/$/, '');
 
   const getDeviceId = () => {
     let id = localStorage.getItem('posDeviceId');
@@ -1587,105 +1737,149 @@ function DeviceSetupScreen({ cloudInfo, settings, onComplete }) {
     return id;
   };
 
-  const register = async (deviceType) => {
-    setError('');
-    setSelecting(true);
-    const base = (settings?.posmsUrl || '').replace(/\/api\/v1.*$/, '').replace(/\/$/, '');
+  const getDeviceName = () => {
+    const ua = navigator.userAgent;
+    if (/android/i.test(ua)) return 'Android Phone';
+    if (/iphone/i.test(ua))  return 'iPhone';
+    if (/ipad/i.test(ua))    return 'iPad';
+    if (/windows/i.test(ua)) return 'Windows PC';
+    if (/mac/i.test(ua))     return 'Mac';
+    return 'Desktop PC';
+  };
+
+  const registerManager = async () => {
+    if (!mgrUsername.trim() || !mgrPin.trim()) { setError('Enter your manager username and PIN.'); return; }
+    setBusy(true); setError('');
     try {
-      const ua = navigator.userAgent;
-      const deviceName = ua.includes('Windows') ? 'Windows PC' : ua.includes('Mac') ? 'Mac' : 'Desktop PC';
       const resp = await fetch(`${base}/api/v1/pos/devices/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          license_key: settings?.posmsLicenseKey,
-          device_id: getDeviceId(),
-          device_type: deviceType,
-          platform: 'desktop',
-          device_name: deviceName,
+          license_key:      settings?.posmsLicenseKey,
+          device_id:        getDeviceId(),
+          device_type:      'manager',
+          platform:         PLATFORM,
+          device_name:      getDeviceName(),
+          manager_username: mgrUsername.trim(),
+          manager_pin:      mgrPin.trim(),
         }),
       });
       const json = await resp.json();
-      if (!resp.ok || !json.data?.registered) {
-        setError(json.message || 'Registration failed. Please try again.');
-        setSelecting(false);
-        return;
-      }
-      onComplete(deviceType);
-    } catch {
-      setError('Cannot reach server. Check your connection and try again.');
-      setSelecting(false);
-    }
+      if (!resp.ok || !json.data?.registered) { setError(json.message || 'Registration failed.'); setBusy(false); return; }
+      onComplete('manager');
+    } catch { setError('Cannot reach server. Check your connection.'); setBusy(false); }
   };
 
-  const cardBase = {
-    borderRadius: '16px', padding: '1.5rem 1.25rem',
-    textAlign: 'left', transition: 'all 0.2s',
-    border: '2px solid rgba(99,179,237,0.45)',
+  const registerPOS = async () => {
+    if (!accessCode.trim()) { setError('Enter the access code your manager gave you.'); return; }
+    setBusy(true); setError('');
+    try {
+      const resp = await fetch(`${base}/api/v1/pos/devices/register`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          license_key: settings?.posmsLicenseKey,
+          device_id:   getDeviceId(),
+          device_type: 'pos',
+          platform:    PLATFORM,
+          access_code: accessCode.trim(),
+        }),
+      });
+      const json = await resp.json();
+      if (!resp.ok || !json.data?.registered) { setError(json.message || 'Invalid access code.'); setBusy(false); return; }
+      onComplete('pos');
+    } catch { setError('Cannot reach server. Check your connection.'); setBusy(false); }
   };
 
-  return (
-    <div style={{position:'fixed',inset:0,zIndex:9999,background:'linear-gradient(135deg,#0f172a 0%,#1e3a8a 55%,#1e40af 100%)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'1.5rem'}}>
-      <div style={{marginBottom:'1.5rem',textAlign:'center'}}>
-        <img src="PesaIcon.png" alt="Pesa POS" style={{height:'56px',marginBottom:'0.75rem',filter:'drop-shadow(0 4px 16px rgba(0,0,0,0.5))'}} />
-        <h1 style={{color:'#fff',fontSize:'1.6rem',fontWeight:800,margin:0,letterSpacing:'-0.02em'}}>Device Setup</h1>
-        <p style={{color:'rgba(147,197,253,0.85)',fontSize:'0.9rem',margin:'0.4rem 0 0',maxWidth:'440px'}}>
-          This device is not yet registered. Choose how it will be used.
-        </p>
-        {cloudInfo?.plan_name && (
-          <span style={{display:'inline-block',marginTop:'0.6rem',padding:'3px 14px',borderRadius:'99px',background:'rgba(255,255,255,0.1)',color:'rgba(167,243,208,0.9)',fontSize:'0.75rem',fontWeight:700,border:'1px solid rgba(255,255,255,0.15)'}}>
-            {cloudInfo.plan_name} Plan · {cloudInfo.business_name || ''}
-          </span>
-        )}
+  const wrap = { position:'fixed',inset:0,zIndex:9999,background:'linear-gradient(135deg,#0f172a 0%,#1e3a8a 55%,#1e40af 100%)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'1.5rem' };
+  const inp  = { display:'block',width:'100%',padding:'10px 12px',borderRadius:'9px',border:'1px solid rgba(99,179,237,0.4)',background:'rgba(255,255,255,0.07)',color:'#fff',fontSize:'0.95rem',outline:'none',boxSizing:'border-box',marginTop:'4px' };
+  const btn  = (col='#3b82f6') => ({ padding:'10px 24px',borderRadius:'9px',border:'none',background:`linear-gradient(135deg,${col},${col}cc)`,color:'#fff',fontWeight:700,fontSize:'0.9rem',cursor:'pointer',width:'100%',opacity:busy?0.7:1 });
+
+  const header = (
+    <div style={{marginBottom:'1.75rem',textAlign:'center'}}>
+      <img src="PesaIcon.png" alt="Pesa POS" style={{height:'52px',marginBottom:'0.65rem',filter:'drop-shadow(0 4px 16px rgba(0,0,0,0.5))'}} />
+      <h1 style={{color:'#fff',fontSize:'1.55rem',fontWeight:800,margin:0,letterSpacing:'-0.02em'}}>Device Setup</h1>
+      {cloudInfo?.plan_name && (
+        <span style={{display:'inline-block',marginTop:'0.5rem',padding:'3px 14px',borderRadius:'99px',background:'rgba(255,255,255,0.1)',color:'rgba(167,243,208,0.9)',fontSize:'0.74rem',fontWeight:700,border:'1px solid rgba(255,255,255,0.15)'}}>
+          {cloudInfo.plan_name} Plan · {cloudInfo.business_name || ''}
+        </span>
+      )}
+    </div>
+  );
+
+  const errBox = error ? (
+    <div style={{marginTop:'0.75rem',padding:'9px 14px',borderRadius:'9px',background:'rgba(239,68,68,0.15)',border:'1px solid rgba(239,68,68,0.4)',color:'#fca5a5',fontSize:'0.82rem',fontWeight:600}}>⚠ {error}</div>
+  ) : null;
+
+  if (step === 'manager') return (
+    <div style={wrap}>
+      {header}
+      <div style={{width:'100%',maxWidth:'380px',background:'rgba(255,255,255,0.06)',borderRadius:'18px',border:'1px solid rgba(99,179,237,0.3)',padding:'1.5rem'}}>
+        <div style={{fontSize:'1.8rem',textAlign:'center',marginBottom:'0.5rem'}}>🖥️</div>
+        <h2 style={{color:'#fff',fontSize:'1.05rem',fontWeight:800,textAlign:'center',margin:'0 0 0.3rem'}}>Manager Device</h2>
+        <p style={{color:'rgba(147,197,253,0.8)',fontSize:'0.78rem',textAlign:'center',margin:'0 0 1.25rem',lineHeight:'1.5'}}>Enter your manager credentials to register this device.</p>
+        <label style={{color:'rgba(147,197,253,0.85)',fontSize:'0.8rem',fontWeight:600}}>Manager Username
+          <input value={mgrUsername} onChange={e=>setMgrUsername(e.target.value)} autoComplete="username" style={inp} placeholder="e.g. admin" />
+        </label>
+        <label style={{color:'rgba(147,197,253,0.85)',fontSize:'0.8rem',fontWeight:600,display:'block',marginTop:'0.9rem'}}>Manager PIN
+          <input type="password" inputMode="numeric" value={mgrPin} onChange={e=>setMgrPin(e.target.value)} style={inp} placeholder="4–6 digit PIN" onKeyDown={e=>e.key==='Enter'&&registerManager()} />
+        </label>
+        {errBox}
+        <button onClick={registerManager} disabled={busy} style={{...btn('#1e3a8a'),marginTop:'1.1rem'}}>{busy?'Registering…':'Register as Manager'}</button>
+        <button onClick={()=>{setStep('choose');setError('');}} style={{...btn('#334155'),marginTop:'0.5rem'}}>← Back</button>
       </div>
+    </div>
+  );
 
+  if (step === 'pos') return (
+    <div style={wrap}>
+      {header}
+      <div style={{width:'100%',maxWidth:'380px',background:'rgba(255,255,255,0.06)',borderRadius:'18px',border:'1px solid rgba(99,179,237,0.3)',padding:'1.5rem'}}>
+        <div style={{fontSize:'1.8rem',textAlign:'center',marginBottom:'0.5rem'}}>🧾</div>
+        <h2 style={{color:'#fff',fontSize:'1.05rem',fontWeight:800,textAlign:'center',margin:'0 0 0.3rem'}}>POS Cashier Device</h2>
+        <p style={{color:'rgba(147,197,253,0.8)',fontSize:'0.78rem',textAlign:'center',margin:'0 0 1.25rem',lineHeight:'1.5'}}>Enter the access code your manager created for this device.</p>
+        <label style={{color:'rgba(147,197,253,0.85)',fontSize:'0.8rem',fontWeight:600}}>Access Code
+          <input type="password" inputMode="numeric" value={accessCode} onChange={e=>setAccessCode(e.target.value)} style={{...inp,fontSize:'1.3rem',letterSpacing:'0.2em',textAlign:'center'}} placeholder="• • • • • •" maxLength={8} onKeyDown={e=>e.key==='Enter'&&registerPOS()} />
+        </label>
+        <p style={{color:'rgba(100,116,139,0.65)',fontSize:'0.72rem',marginTop:'0.5rem',textAlign:'center'}}>Ask your manager to create one in Settings → Devices → POS Credentials.</p>
+        {errBox}
+        <button onClick={registerPOS} disabled={busy} style={{...btn('#047857'),marginTop:'1.1rem'}}>{busy?'Verifying…':'Register as Cashier'}</button>
+        <button onClick={()=>{setStep('choose');setError('');}} style={{...btn('#334155'),marginTop:'0.5rem'}}>← Back</button>
+      </div>
+    </div>
+  );
+
+  // Step: choose
+  const cardBase = { borderRadius:'16px',padding:'1.5rem 1.25rem',textAlign:'left',transition:'all 0.2s',border:'2px solid rgba(99,179,237,0.35)',background:'rgba(255,255,255,0.07)',cursor:'pointer' };
+  return (
+    <div style={wrap}>
+      {header}
+      <p style={{color:'rgba(147,197,253,0.85)',fontSize:'0.88rem',margin:'-0.75rem 0 1.25rem',textAlign:'center'}}>This device is not yet registered. How will it be used?</p>
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'1rem',maxWidth:'560px',width:'100%'}}>
-        {/* Manager Device */}
-        <button
-          onClick={() => !desktopFull && !selecting && register('manager')}
-          disabled={desktopFull || selecting}
-          style={{...cardBase, background: desktopFull ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.07)', cursor: desktopFull || selecting ? 'not-allowed' : 'pointer', opacity: desktopFull || selecting ? 0.55 : 1}}
-          onMouseEnter={e => { if (!desktopFull && !selecting) e.currentTarget.style.background='rgba(255,255,255,0.13)'; }}
-          onMouseLeave={e => { if (!desktopFull && !selecting) e.currentTarget.style.background='rgba(255,255,255,0.07)'; }}
-        >
+        <button onClick={()=>!mgrFull&&setStep('manager')} disabled={mgrFull}
+          style={{...cardBase,opacity:mgrFull?0.45:1,cursor:mgrFull?'not-allowed':'pointer'}}
+          onMouseEnter={e=>{if(!mgrFull)e.currentTarget.style.background='rgba(255,255,255,0.13)';}}
+          onMouseLeave={e=>{if(!mgrFull)e.currentTarget.style.background='rgba(255,255,255,0.07)';}}>
           <div style={{fontSize:'2rem',marginBottom:'0.5rem'}}>🖥️</div>
           <div style={{color:'#fff',fontWeight:700,fontSize:'1rem',marginBottom:'0.35rem'}}>Manager Device</div>
-          <div style={{color:'rgba(147,197,253,0.8)',fontSize:'0.78rem',lineHeight:'1.55',marginBottom:'0.8rem'}}>
-            Full management access. Only managers can log in on this device.
-          </div>
-          <div style={{display:'inline-block',padding:'3px 10px',borderRadius:'99px',fontSize:'0.72rem',fontWeight:700,background:desktopFull?'rgba(239,68,68,0.2)':'rgba(16,185,129,0.2)',color:desktopFull?'#fca5a5':'#6ee7b7',border:`1px solid ${desktopFull?'rgba(239,68,68,0.4)':'rgba(16,185,129,0.4)'}`}}>
-            {desktopMax === null ? 'Unlimited' : desktopFull ? 'Limit reached' : `${desktopAvail} slot${desktopAvail === 1 ? '' : 's'} available`}
+          <div style={{color:'rgba(147,197,253,0.8)',fontSize:'0.78rem',lineHeight:'1.55',marginBottom:'0.8rem'}}>Full management access. Requires manager credentials.</div>
+          <div style={{display:'inline-block',padding:'3px 10px',borderRadius:'99px',fontSize:'0.72rem',fontWeight:700,background:mgrFull?'rgba(239,68,68,0.2)':'rgba(16,185,129,0.2)',color:mgrFull?'#fca5a5':'#6ee7b7',border:`1px solid ${mgrFull?'rgba(239,68,68,0.4)':'rgba(16,185,129,0.4)'}`}}>
+            {mgrMax === null ? 'Unlimited' : mgrFull ? 'Limit reached' : `${mgrAvail} slot${mgrAvail===1?'':'s'} available`}
           </div>
         </button>
 
-        {/* POS Device */}
-        <button
-          onClick={() => !selecting && register('pos')}
-          disabled={selecting}
-          style={{...cardBase, background:'rgba(255,255,255,0.07)', cursor:selecting?'not-allowed':'pointer', opacity:selecting?0.55:1}}
-          onMouseEnter={e => { if (!selecting) e.currentTarget.style.background='rgba(255,255,255,0.13)'; }}
-          onMouseLeave={e => { if (!selecting) e.currentTarget.style.background='rgba(255,255,255,0.07)'; }}
-        >
-          <div style={{fontSize:'2rem',marginBottom:'0.5rem'}}>🏪</div>
-          <div style={{color:'#fff',fontWeight:700,fontSize:'1rem',marginBottom:'0.35rem'}}>POS Device</div>
-          <div style={{color:'rgba(147,197,253,0.8)',fontSize:'0.78rem',lineHeight:'1.55',marginBottom:'0.8rem'}}>
-            Point-of-sale operations. Tellers and cashiers process sales on this device.
-          </div>
+        <button onClick={()=>setStep('pos')}
+          style={cardBase}
+          onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,0.13)'}
+          onMouseLeave={e=>e.currentTarget.style.background='rgba(255,255,255,0.07)'}>
+          <div style={{fontSize:'2rem',marginBottom:'0.5rem'}}>🧾</div>
+          <div style={{color:'#fff',fontWeight:700,fontSize:'1rem',marginBottom:'0.35rem'}}>POS Cashier</div>
+          <div style={{color:'rgba(147,197,253,0.8)',fontSize:'0.78rem',lineHeight:'1.55',marginBottom:'0.8rem'}}>Sales terminal. Uses an access code created by your manager.</div>
           <div style={{display:'inline-block',padding:'3px 10px',borderRadius:'99px',fontSize:'0.72rem',fontWeight:700,background:'rgba(16,185,129,0.2)',color:'#6ee7b7',border:'1px solid rgba(16,185,129,0.4)'}}>
             Unlimited
           </div>
         </button>
       </div>
-
-      {error && (
-        <div style={{marginTop:'1rem',maxWidth:'560px',width:'100%',padding:'10px 16px',borderRadius:'10px',background:'rgba(239,68,68,0.15)',border:'1px solid rgba(239,68,68,0.4)',color:'#fca5a5',fontSize:'0.84rem',fontWeight:600}}>
-          ⚠ {error}
-        </div>
-      )}
-      {selecting && <p style={{marginTop:'0.9rem',color:'rgba(147,197,253,0.8)',fontSize:'0.85rem'}}>Registering device…</p>}
-
       <p style={{marginTop:'1.5rem',color:'rgba(100,116,139,0.65)',fontSize:'0.72rem',maxWidth:'440px',textAlign:'center',lineHeight:'1.6'}}>
-        This choice is saved permanently on the device. A manager can change it later from Settings → Devices.
+        Managers: register this device first, then create POS access codes from Settings → Devices.
       </p>
     </div>
   );
@@ -7422,6 +7616,8 @@ function POSSystem() {
         ? prev.map((q, i) => i === idx ? quotation : q)
         : [...prev, quotation];
       localStorage.setItem('pos_quotations', JSON.stringify(next));
+      PesaDB.putAll('quotations', next).catch(() => {});
+      socketPushData({ quotations: next });
       return next;
     });
     syncAllToCloud();
@@ -7433,6 +7629,8 @@ function POSSystem() {
     setQuotations(prev => {
       const next = prev.filter(q => q.id !== quotationId);
       localStorage.setItem('pos_quotations', JSON.stringify(next));
+      PesaDB.putAll('quotations', next).catch(() => {});
+      socketPushData({ quotations: next });
       return next;
     });
     syncAllToCloud();
