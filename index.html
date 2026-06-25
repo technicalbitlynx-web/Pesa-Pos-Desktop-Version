@@ -11,6 +11,8 @@
   <script src="./vendor/babel.min.js"></script>
   <!-- Tailwind Play CDN works offline when saved locally -->
   <script src="./vendor/tailwind.js"></script>
+  <!-- Dexie.js — IndexedDB wrapper for hybrid local storage -->
+  <script src="./vendor/dexie.min.js"></script>
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -18,6 +20,81 @@
 
 <script type="text/babel" data-presets="env,react" data-plugins="proposal-class-properties,proposal-object-rest-spread,proposal-optional-chaining,proposal-nullish-coalescing-operator">
 const { useState, useEffect, useRef, useMemo } = React;
+
+// ─── PesaDB: Hybrid Storage Layer (IndexedDB via Dexie) ──────────────────────
+const _db = new Dexie('PesaPOS_v1');
+_db.version(1).stores({
+  products:   'id, barcode, name, category, updatedAt',
+  sales:      'id, timestamp, receipt_number, updatedAt',
+  credits:    'id, customer_name, updatedAt',
+  suppliers:  'id, name, updatedAt',
+  expenses:   'id, date, updatedAt',
+  stockLog:   '++_seq, date, updatedAt',
+  quotations: 'id, date, updatedAt',
+  users:      'id, username',
+  kv:         'key',
+  syncQueue:  '++id, table, ts',
+});
+
+const PesaDB = {
+  // ── Reads ───────────────────────────────────────────────────────────────────
+  async getAll(table)          { return _db[table].toArray(); },
+  async get(table, key)        { return _db[table].get(key); },
+  async getKV(key, fallback)   { const r = await _db.kv.get(key); return r ? r.val : fallback; },
+
+  // ── Writes ──────────────────────────────────────────────────────────────────
+  async putAll(table, rows) {
+    const ts = new Date().toISOString();
+    const tagged = rows.map(r => ({ ...r, updatedAt: r.updatedAt || ts }));
+    await _db[table].bulkPut(tagged);
+    return tagged;
+  },
+  async putKV(key, val)        { await _db.kv.put({ key, val }); },
+  async clearTable(table)      { await _db[table].clear(); },
+
+  // ── Merge (last-write-wins per record) ──────────────────────────────────────
+  async merge(table, incoming) {
+    if (!incoming?.length) return;
+    const existing = await _db[table].bulkGet(incoming.map(r => r.id || r._seq));
+    const toWrite = incoming.filter((r, i) => {
+      const ex = existing[i];
+      if (!ex) return true;
+      return (r.updatedAt || '') >= (ex.updatedAt || '');
+    });
+    if (toWrite.length) await _db[table].bulkPut(toWrite);
+  },
+
+  // ── Migration from localStorage CSV ─────────────────────────────────────────
+  async migrateFromLocalStorage(parsers) {
+    const migrated = await _db.kv.get('ls_migrated_v1');
+    if (migrated) return false;
+    let didMigrate = false;
+    for (const [table, { lsKey, parse }] of Object.entries(parsers)) {
+      const raw = localStorage.getItem(lsKey);
+      if (!raw) continue;
+      try {
+        const rows = parse(raw);
+        if (rows?.length) { await PesaDB.putAll(table, rows); didMigrate = true; }
+      } catch (_) {}
+    }
+    await _db.kv.put({ key: 'ls_migrated_v1', val: true });
+    return didMigrate;
+  },
+
+  // ── Offline sync queue ───────────────────────────────────────────────────────
+  async queueSync(table, data) {
+    await _db.syncQueue.add({ table, data: JSON.stringify(data), ts: Date.now() });
+  },
+  async flushQueue(sendFn) {
+    const items = await _db.syncQueue.toArray();
+    if (!items.length) return;
+    for (const item of items) {
+      try { await sendFn(item.table, JSON.parse(item.data)); await _db.syncQueue.delete(item.id); }
+      catch (_) { break; }
+    }
+  },
+};
+// ─────────────────────────────────────────────────────────────────────────────
 
 // helper to animate closing a modal/card then update state
 function closeWithAnimation(setter) {
@@ -7072,6 +7149,34 @@ function POSSystem() {
         notify && notify(data.message || 'Message from admin');
       });
 
+      // Real-time data sync from another device on the same license
+      socket.on('pos:data-push', async (payload) => {
+        const { products: p, sales: s, credits: c, suppliers: su, expenses: ex, stock_log: sl, quotations: q } = payload;
+        const mergeAndSet = async (table, incoming, setter) => {
+          if (!incoming?.length) return;
+          await PesaDB.merge(table, incoming);
+          const fresh = await PesaDB.getAll(table);
+          setter(fresh);
+        };
+        await Promise.all([
+          mergeAndSet('products',   p,  (rows) => { setProducts(rows); setCsvURLFromRows(rows, monthKey()); }),
+          mergeAndSet('sales',      s,  setSales),
+          mergeAndSet('credits',    c,  setCredits),
+          mergeAndSet('suppliers',  su, setSuppliers),
+          mergeAndSet('expenses',   ex, setExpenses),
+          mergeAndSet('stockLog',   sl, setStockLog),
+          mergeAndSet('quotations', q,  setQuotations),
+        ]);
+        if (p?.length || s?.length || c?.length) showToast && showToast('Data synced from another device', 'info');
+      });
+
+      // On reconnect: flush any queued changes and pull latest from cloud
+      socket.on('connect', () => {
+        PesaDB.flushQueue(async (table, data) => {
+          socketPushData({ [table]: data });
+        });
+      });
+
       socket.on('pos:refresh', (payload) => {
         // On reassign or deregister, clear cached device type so it re-checks
         if (payload?.reason === 'device_reassigned' || payload?.reason === 'device_deregistered') {
@@ -7079,7 +7184,7 @@ function POSSystem() {
           setPosDeviceType(null);
           // Force logout so the new device type is enforced
           setCurrentUser(null);
-          localStorage.removeItem('pos_current_user');
+          PesaDB.putKV('current_user', null).catch(() => {});
         }
         setCloudStatus('checking');
         fetch(`${serverUrl.replace(/\/api\/v1.*$/, '').replace(/\/$/, '')}/api/v1/pos/validate-license`, {
@@ -7134,6 +7239,24 @@ function POSSystem() {
       if (posSocketRef.current) { posSocketRef.current.disconnect(); posSocketRef.current = null; }
     };
   }, [cloudStatus, settings?.posmsUrl, settings?.posmsLicenseKey]);
+
+  // Push local data change to all other devices via Socket.IO
+  const socketPushData = React.useCallback((delta) => {
+    const socket = posSocketRef.current;
+    if (!socket?.connected) {
+      // Queue for replay when we reconnect
+      Object.entries(delta).forEach(([table, data]) => {
+        if (data?.length) PesaDB.queueSync(table, data).catch(() => {});
+      });
+      return;
+    }
+    socket.emit('pos:data-push', {
+      device_id: localStorage.getItem('posDeviceId'),
+      license_key: settings?.posmsLicenseKey,
+      timestamp: new Date().toISOString(),
+      ...delta,
+    });
+  }, [settings?.posmsLicenseKey]);
 
   // Sync today's sales to POS MS (called after each completed sale)
   const syncSalesToCloud = (newSales) => {
@@ -7196,21 +7319,34 @@ function POSSystem() {
       const json = await resp.json();
       const d = json.data;
       if (!d) return;
-      if (Array.isArray(d.products)   && d.products.length)   { setProducts(d.products);   setCsvURLFromRows(d.products, monthKey()); }
-      if (Array.isArray(d.sales)      && d.sales.length)       { setSales(d.sales);         setSalesCsvURLFromRows(d.sales); }
-      if (Array.isArray(d.credits)    && d.credits.length)     persistCredits(d.credits);
-      if (Array.isArray(d.suppliers)  && d.suppliers.length)   persistSuppliers(d.suppliers);
-      if (Array.isArray(d.expenses)   && d.expenses.length)    persistExpenses(d.expenses);
-      if (Array.isArray(d.stock_log)  && d.stock_log.length)   persistStockLog(d.stock_log);
-      if (Array.isArray(d.quotations) && d.quotations.length)  {
-        setQuotations(d.quotations);
-        localStorage.setItem('pos_quotations', JSON.stringify(d.quotations));
-      }
+      // Merge cloud data into IndexedDB (last-write-wins per record)
+      await Promise.all([
+        d.products?.length   ? PesaDB.merge('products',   d.products)   : null,
+        d.sales?.length      ? PesaDB.merge('sales',      d.sales)       : null,
+        d.credits?.length    ? PesaDB.merge('credits',    d.credits)     : null,
+        d.suppliers?.length  ? PesaDB.merge('suppliers',  d.suppliers)   : null,
+        d.expenses?.length   ? PesaDB.merge('expenses',   d.expenses)    : null,
+        d.stock_log?.length  ? PesaDB.merge('stockLog',   d.stock_log)   : null,
+        d.quotations?.length ? PesaDB.merge('quotations', d.quotations)  : null,
+      ].filter(Boolean));
+      // Re-read merged results and update React state
+      const [prods, sls, creds, supps, exps, slog, quots] = await Promise.all([
+        PesaDB.getAll('products'), PesaDB.getAll('sales'), PesaDB.getAll('credits'),
+        PesaDB.getAll('suppliers'), PesaDB.getAll('expenses'), PesaDB.getAll('stockLog'),
+        PesaDB.getAll('quotations'),
+      ]);
+      if (prods.length)  { setProducts(prods);  setCsvURLFromRows(prods, monthKey()); }
+      if (sls.length)    setSales(sls);
+      if (creds.length)  setCredits(creds);
+      if (supps.length)  setSuppliers(supps);
+      if (exps.length)   setExpenses(exps);
+      if (slog.length)   setStockLog(slog);
+      if (quots.length)  setQuotations(quots);
       if (Array.isArray(d.operators) && d.operators.length) {
         setCloudOperators(d.operators);
         localStorage.setItem('pos_cloud_operators', JSON.stringify(d.operators));
       }
-      showToast && showToast('Data loaded from cloud', 'success');
+      showToast && showToast('Data synced from cloud', 'success');
     } catch (_) {}
   }, [settings]);
 
@@ -7433,90 +7569,51 @@ function POSSystem() {
     }
   }, [isLoading, showLoadingScreen]);
 
-  // Load data on startup
+  // Load data on startup — IndexedDB first, migrate from localStorage if needed
   useEffect(() => {
-    const savedUsers = localStorage.getItem("pos_users_csv");
-    if (savedUsers) {
-      try {
-        const parsed = parseUsersCSV(savedUsers);
-        setUsers(parsed);
-      } catch (_) { }
-    }
+    async function init() {
+      // One-time migration: move existing localStorage CSV data into IndexedDB
+      const prodLsKey = localStorage.getItem(`pos_products_csv_${monthKey()}`) ? `pos_products_csv_${monthKey()}` : 'pos_products_csv';
+      await PesaDB.migrateFromLocalStorage({
+        products:   { lsKey: prodLsKey,             parse: parseProductsWithBatchesCSV },
+        sales:      { lsKey: 'pos_sales_csv',       parse: parseSalesCSV },
+        credits:    { lsKey: 'pos_credits_csv',     parse: parseCreditsCSV },
+        suppliers:  { lsKey: 'pos_suppliers_csv',   parse: parseSuppliersCSV },
+        expenses:   { lsKey: 'pos_expenses_csv',    parse: parseExpensesCSV },
+        stockLog:   { lsKey: 'pos_stock_log_csv',   parse: parseStockLogCSV },
+        users:      { lsKey: 'pos_users_csv',       parse: parseUsersCSV },
+        quotations: { lsKey: 'pos_quotations',      parse: (raw) => JSON.parse(raw) },
+      });
 
-    const savedLog = localStorage.getItem("pos_stock_log_csv");
-    if (savedLog) {
-      try {
-        const rows = parseStockLogCSV(savedLog);
-        setStockLog(rows);
-      } catch (_) { }
-    }
+      // Load everything from IndexedDB in parallel
+      const [prods, sls, creds, supps, exps, slog, quots, usrs, rcpt, savedUser] = await Promise.all([
+        PesaDB.getAll('products'),
+        PesaDB.getAll('sales'),
+        PesaDB.getAll('credits'),
+        PesaDB.getAll('suppliers'),
+        PesaDB.getAll('expenses'),
+        PesaDB.getAll('stockLog'),
+        PesaDB.getAll('quotations'),
+        PesaDB.getAll('users'),
+        PesaDB.getKV('receipt_counter', 1001),
+        PesaDB.getKV('current_user', null),
+      ]);
 
-    const savedCredits = localStorage.getItem("pos_credits_csv");
-    if (savedCredits) {
-      try {
-        const parsedCredits = parseCreditsCSV(savedCredits);
-        setCredits(parsedCredits);
-      } catch (_) { }
-    }
+      if (prods.length)  { setProducts(prods);  setCsvURLFromRows(prods, monthKey()); }
+      if (sls.length)    setSales(sls);
+      if (creds.length)  setCredits(creds);
+      if (supps.length)  setSuppliers(supps);
+      if (exps.length)   setExpenses(exps);
+      if (slog.length)   setStockLog(slog);
+      if (quots.length)  setQuotations(quots);
+      if (usrs.length)   setUsers(usrs);
+      setReceiptNumber(rcpt || 1001);
 
-    const savedSuppliers = localStorage.getItem("pos_suppliers_csv");
-    if (savedSuppliers) {
-      try {
-        const parsedSuppliers = parseSuppliersCSV(savedSuppliers);
-        setSuppliers(parsedSuppliers);
-      } catch (_) { }
+      // Restore current user from IndexedDB (fallback to localStorage for compat)
+      const cu = savedUser || (() => { try { return JSON.parse(localStorage.getItem('pos_current_user')); } catch { return null; } })();
+      if (cu) setCurrentUser(cu);
     }
-
-    const savedQuotations = localStorage.getItem("pos_quotations");
-    if (savedQuotations) {
-      try {
-        const parsedQuotations = JSON.parse(savedQuotations);
-        setQuotations(parsedQuotations);
-      } catch (_) { }
-    }
-
-    const savedExpenses = localStorage.getItem("pos_expenses_csv");
-    if (savedExpenses) {
-      try {
-        const parsedExpenses = parseExpensesCSV(savedExpenses);
-        setExpenses(parsedExpenses);
-      } catch (_) { }
-    }
-
-    const savedSales = localStorage.getItem("pos_sales_csv");
-    if (savedSales) {
-      try {
-        const parsed = parseSalesCSV(savedSales);
-        if (parsed.length > 0) setSales(parsed);
-      } catch (_) { }
-    }
-
-    const savedUser = localStorage.getItem("pos_current_user");
-    if (savedUser) {
-      try {
-        const u = JSON.parse(savedUser);
-        setCurrentUser(u);
-      } catch (_) { }
-    }
-
-    const savedReceipt = localStorage.getItem("pos_receipt_counter");
-    if (savedReceipt) setReceiptNumber(parseInt(savedReceipt, 10) || 1001);
-
-    // load products, preferring current-month data but falling back to a permanent key
-    let productCsv = localStorage.getItem(`pos_products_csv_${monthKey()}`);
-    if (!productCsv) {
-      // try general key for backwards compatibility or when month changed
-      productCsv = localStorage.getItem('pos_products_csv');
-    }
-    if (productCsv) {
-      try {
-        const rows = parseProductsWithBatchesCSV(productCsv);
-        setProducts(rows);
-        // use current month for CSV url/file but keep general key updated
-        setCsvURLFromRows(rows, monthKey());
-        setCsvFileName(`products_${monthKey()}.csv`);
-      } catch (_) { }
-    }
+    init();
   }, []);
 
   // Save settings
@@ -7527,50 +7624,49 @@ function POSSystem() {
     showToast && showToast('Settings saved', 'success');
   };
 
-  // CSV helpers
+  // CSV helpers — write to IndexedDB (and generate download URL)
   function setCsvURLFromRows(rows, key = monthKey()) {
     const csv = productsWithBatchesToCSV(rows);
-    // store under both monthly and permanent keys
-    localStorage.setItem(`pos_products_csv_${key}`, csv);
-    localStorage.setItem('pos_products_csv', csv);
     const url = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
     if (csvURL) URL.revokeObjectURL(csvURL);
     setCsvURL(url);
     setCsvFileName(`products_${key}.csv`);
+    PesaDB.putAll('products', rows).catch(() => {});
+    socketPushData({ products: rows });
     syncAllToCloud();
   }
 
   function setSalesCsvURLFromRows(rows) {
-    const csv = salesToCSV(rows);
-    localStorage.setItem("pos_sales_csv", csv);
+    PesaDB.putAll('sales', rows).catch(() => {});
+    socketPushData({ sales: rows });
     syncAllToCloud();
   }
 
   function persistCredits(creditRows) {
-    const csv = creditsToCSV(creditRows);
-    localStorage.setItem("pos_credits_csv", csv);
     setCredits(creditRows);
+    PesaDB.putAll('credits', creditRows).catch(() => {});
+    socketPushData({ credits: creditRows });
     syncAllToCloud();
   }
 
   function persistSuppliers(supplierRows) {
-    const csv = suppliersToCSV(supplierRows);
-    localStorage.setItem("pos_suppliers_csv", csv);
     setSuppliers(supplierRows);
+    PesaDB.putAll('suppliers', supplierRows).catch(() => {});
+    socketPushData({ suppliers: supplierRows });
     syncAllToCloud();
   }
 
   function persistExpenses(expenseRows) {
-    const csv = expensesToCSV(expenseRows);
-    localStorage.setItem("pos_expenses_csv", csv);
     setExpenses(expenseRows);
+    PesaDB.putAll('expenses', expenseRows).catch(() => {});
+    socketPushData({ expenses: expenseRows });
     syncAllToCloud();
   }
 
   function persistStockLog(rows) {
-    const csv = stockLogToCSV(rows);
-    localStorage.setItem("pos_stock_log_csv", csv);
     setStockLog(rows);
+    PesaDB.putAll('stockLog', rows).catch(() => {});
+    socketPushData({ stock_log: rows });
     syncAllToCloud();
   }
 
@@ -7628,30 +7724,25 @@ function POSSystem() {
         const prods = normalizeProducts(data.products);
         setProducts(prods);
         setCsvURLFromRows(prods, monthKey());
-        localStorage.setItem(`pos_products_csv_${monthKey()}`, productsWithBatchesToCSV(prods));
       }
       if (data.sales && Array.isArray(data.sales)) {
         const sls = normalizeSales(data.sales);
         setSales(sls);
         setSalesCsvURLFromRows(sls);
-        localStorage.setItem("pos_sales_csv", salesToCSV(sls));
       }
       if (data.credits && Array.isArray(data.credits)) {
         const cr = normalizeCredits(data.credits);
-        setCredits(cr);
         persistCredits(cr);
       }
       if (data.suppliers && Array.isArray(data.suppliers)) {
-        setSuppliers(data.suppliers);
         persistSuppliers(data.suppliers);
       }
       if (data.stockLog && Array.isArray(data.stockLog)) {
-        setStockLog(data.stockLog);
-        localStorage.setItem("pos_stock_log_csv", stockLogToCSV(data.stockLog));
+        persistStockLog(data.stockLog);
       }
       if (data.users && Array.isArray(data.users)) {
         setUsers(data.users);
-        localStorage.setItem("pos_users_csv", usersToCSV(data.users));
+        PesaDB.putAll('users', data.users).catch(() => {});
       }
       if (data.expenses && Array.isArray(data.expenses)) {
         setExpenses(data.expenses);
@@ -7665,7 +7756,7 @@ function POSSystem() {
   // Handle login
   const handleLogin = (user) => {
     setCurrentUser(user);
-    localStorage.setItem("pos_current_user", JSON.stringify(user));
+    PesaDB.putKV('current_user', user).catch(() => {});
     setShowLogin(false);
   };
 
@@ -7875,7 +7966,7 @@ function POSSystem() {
 
     // Update receipt number
     setReceiptNumber(currentReceipt + 1);
-    localStorage.setItem("pos_receipt_counter", String(currentReceipt + 1));
+    PesaDB.putKV('receipt_counter', currentReceipt + 1).catch(() => {});
 
     // Save receipt items, clear cart and show receipt/invoice
     setReceiptItems(cart);
@@ -8966,9 +9057,8 @@ function POSSystem() {
           currentUser={currentUser}
           onClose={() => closeWithAnimation(setShowUserManagement)}
           onSave={(updatedUsers) => {
-            const csv = usersToCSV(updatedUsers);
-            localStorage.setItem("pos_users_csv", csv);
             setUsers(updatedUsers);
+            PesaDB.putAll('users', updatedUsers).catch(() => {});
           }}
         />
       )}
