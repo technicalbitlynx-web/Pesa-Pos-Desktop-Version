@@ -7151,7 +7151,7 @@ function POSSystem() {
 
       // Real-time data sync from another device on the same license
       socket.on('pos:data-push', async (payload) => {
-        const { products: p, sales: s, credits: c, suppliers: su, expenses: ex, stock_log: sl, quotations: q } = payload;
+        const { products: p, sales: s, credits: c, suppliers: su, expenses: ex, quotations: q } = payload;
         const mergeAndSet = async (table, incoming, setter) => {
           if (!incoming?.length) return;
           await PesaDB.merge(table, incoming);
@@ -7164,7 +7164,6 @@ function POSSystem() {
           mergeAndSet('credits',    c,  setCredits),
           mergeAndSet('suppliers',  su, setSuppliers),
           mergeAndSet('expenses',   ex, setExpenses),
-          mergeAndSet('stockLog',   sl, setStockLog),
           mergeAndSet('quotations', q,  setQuotations),
         ]);
         if (p?.length || s?.length || c?.length) showToast && showToast('Data synced from another device', 'info');
@@ -7326,13 +7325,12 @@ function POSSystem() {
         d.credits?.length    ? PesaDB.merge('credits',    d.credits)     : null,
         d.suppliers?.length  ? PesaDB.merge('suppliers',  d.suppliers)   : null,
         d.expenses?.length   ? PesaDB.merge('expenses',   d.expenses)    : null,
-        d.stock_log?.length  ? PesaDB.merge('stockLog',   d.stock_log)   : null,
         d.quotations?.length ? PesaDB.merge('quotations', d.quotations)  : null,
       ].filter(Boolean));
       // Re-read merged results and update React state
-      const [prods, sls, creds, supps, exps, slog, quots] = await Promise.all([
+      const [prods, sls, creds, supps, exps, quots] = await Promise.all([
         PesaDB.getAll('products'), PesaDB.getAll('sales'), PesaDB.getAll('credits'),
-        PesaDB.getAll('suppliers'), PesaDB.getAll('expenses'), PesaDB.getAll('stockLog'),
+        PesaDB.getAll('suppliers'), PesaDB.getAll('expenses'),
         PesaDB.getAll('quotations'),
       ]);
       if (prods.length)  { setProducts(prods);  setCsvURLFromRows(prods, monthKey()); }
@@ -7340,7 +7338,8 @@ function POSSystem() {
       if (creds.length)  setCredits(creds);
       if (supps.length)  setSuppliers(supps);
       if (exps.length)   setExpenses(exps);
-      if (slog.length)   setStockLog(slog);
+      // stockLog is device-local (no stable id) — use cloud version directly if newer
+      if (d.stock_log?.length && d.stock_log.length > stockLog.length) { setStockLog(d.stock_log); localStorage.setItem('pos_stock_log_csv', stockLogToCSV(d.stock_log)); }
       if (quots.length)  setQuotations(quots);
       if (Array.isArray(d.operators) && d.operators.length) {
         setCloudOperators(d.operators);
@@ -7580,24 +7579,25 @@ function POSSystem() {
         credits:    { lsKey: 'pos_credits_csv',     parse: parseCreditsCSV },
         suppliers:  { lsKey: 'pos_suppliers_csv',   parse: parseSuppliersCSV },
         expenses:   { lsKey: 'pos_expenses_csv',    parse: parseExpensesCSV },
-        stockLog:   { lsKey: 'pos_stock_log_csv',   parse: parseStockLogCSV },
         users:      { lsKey: 'pos_users_csv',       parse: parseUsersCSV },
         quotations: { lsKey: 'pos_quotations',      parse: (raw) => JSON.parse(raw) },
       });
 
       // Load everything from IndexedDB in parallel
-      const [prods, sls, creds, supps, exps, slog, quots, usrs, rcpt, savedUser] = await Promise.all([
+      const [prods, sls, creds, supps, exps, quots, usrs, rcpt, savedUser] = await Promise.all([
         PesaDB.getAll('products'),
         PesaDB.getAll('sales'),
         PesaDB.getAll('credits'),
         PesaDB.getAll('suppliers'),
         PesaDB.getAll('expenses'),
-        PesaDB.getAll('stockLog'),
         PesaDB.getAll('quotations'),
         PesaDB.getAll('users'),
         PesaDB.getKV('receipt_counter', 1001),
         PesaDB.getKV('current_user', null),
       ]);
+
+      // stockLog stays in localStorage — it uses ++_seq (no stable id), IndexedDB would create duplicates
+      const slog = (() => { try { return parseStockLogCSV(localStorage.getItem('pos_stock_log_csv') || ''); } catch { return []; } })();
 
       if (prods.length)  { setProducts(prods);  setCsvURLFromRows(prods, monthKey()); }
       if (sls.length)    setSales(sls);
@@ -7665,8 +7665,7 @@ function POSSystem() {
 
   function persistStockLog(rows) {
     setStockLog(rows);
-    PesaDB.putAll('stockLog', rows).catch(() => {});
-    socketPushData({ stock_log: rows });
+    localStorage.setItem('pos_stock_log_csv', stockLogToCSV(rows));
     syncAllToCloud();
   }
 
