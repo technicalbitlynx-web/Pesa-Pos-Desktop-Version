@@ -2,18 +2,20 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Pesa POS — Enhanced Edition</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#1e3a8a">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <title>Pesa POS</title>
 
   <!-- OFFLINE vendor files -->
-  <script src="./vendor/react.development.js"></script>
-  <script src="./vendor/react-dom.development.js"></script>
-  <script src="./vendor/babel.min.js"></script>
-  <!-- Tailwind Play CDN works offline when saved locally -->
-  <script src="./vendor/tailwind.js"></script>
+  <script src="./web-assets/vendor/exe/react.development.js"></script>
+  <script src="./web-assets/vendor/exe/react-dom.development.js"></script>
+  <script src="./web-assets/vendor/exe/babel.min.js"></script>
+  <!-- Tailwind Play CDN — works offline when saved locally -->
+  <script src="./web-assets/vendor/exe/tailwind.js"></script>
   <!-- Dexie.js — IndexedDB wrapper for hybrid local storage -->
-  <script src="./vendor/dexie.min.js"></script>
-  <link rel="stylesheet" href="css/style.css">
+  <script src="./web-assets/vendor/dexie/dexie.min.js"></script>
+  <link rel="stylesheet" href="./web-assets/style.css">
 </head>
 <body>
 <div id="root"></div>
@@ -873,30 +875,38 @@ function SettingsModal({ settings, onClose, onSave, cloudInfo, currentUser, posD
   };
 
   return (
-    <div className="fixed inset-0 modal-overlay flex items-center justify-center p-2 z-50">
-      <div className="glass-card rounded-2xl shadow-2xl w-full max-w-5xl max-h-[95vh] overflow-hidden flex flex-col" style={{background:'rgba(248,250,252,0.6)'}}>
+    <div className={`fixed inset-0 modal-overlay flex items-center justify-center z-50 ${PLATFORM==='mobile'?'':'p-2'}`}>
+      <div className="glass-card shadow-2xl w-full overflow-hidden flex flex-col" style={{background:'rgba(248,250,252,0.6)',maxWidth:PLATFORM==='mobile'?'100vw':'64rem',maxHeight:PLATFORM==='mobile'?'100dvh':'95vh',borderRadius:PLATFORM==='mobile'?0:'1rem'}}>
 
         {/* Header */}
-        <div className="theme-dark-surface flex items-center justify-between px-6 py-4 rounded-t-2xl flex-shrink-0">
+        <div className="theme-dark-surface flex items-center justify-between flex-shrink-0" style={{padding:PLATFORM==='mobile'?'12px 14px':'1rem 1.5rem',borderRadius:PLATFORM==='mobile'?0:'1rem 1rem 0 0'}}>
           <div className="flex items-center gap-3">
-            <div style={{background:'rgba(255,255,255,0.15)',borderRadius:'12px',padding:'9px',display:'flex',alignItems:'center',justifyContent:'center'}}>
+            {PLATFORM !== 'mobile' && <div style={{background:'rgba(255,255,255,0.15)',borderRadius:'12px',padding:'9px',display:'flex',alignItems:'center',justifyContent:'center'}}>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 15a3 3 0 100-6 3 3 0 000 6z" stroke="white" strokeWidth="2"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" stroke="white" strokeWidth="2"/></svg>
-            </div>
+            </div>}
             <div>
-              <h2 style={{color:'#fff',fontSize:'1.3rem',fontWeight:800,margin:0}}>Settings</h2>
-              <p className="theme-header-subtext" style={{fontSize:'0.8rem',margin:0}}>Customize your POS experience</p>
+              <h2 style={{color:'#fff',fontSize:PLATFORM==='mobile'?'1.05rem':'1.3rem',fontWeight:800,margin:0}}>Settings</h2>
+              {PLATFORM !== 'mobile' && <p className="theme-header-subtext" style={{fontSize:'0.8rem',margin:0}}>Customize your POS experience</p>}
             </div>
           </div>
-          <button onClick={onClose} style={{background:'rgba(255,255,255,0.15)',border:'1px solid rgba(255,255,255,0.2)',borderRadius:'10px',padding:'7px 16px',color:'#fff',fontWeight:600,cursor:'pointer',display:'flex',alignItems:'center',gap:'6px',fontSize:'0.88rem'}} onMouseOver={e=>e.currentTarget.style.background='rgba(255,255,255,0.25)'} onMouseOut={e=>e.currentTarget.style.background='rgba(255,255,255,0.15)'}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/></svg> Close
+          <button onClick={onClose} style={{background:'rgba(255,255,255,0.15)',border:'1px solid rgba(255,255,255,0.2)',borderRadius:'10px',padding:PLATFORM==='mobile'?'8px 12px':'7px 16px',color:'#fff',fontWeight:600,cursor:'pointer',display:'flex',alignItems:'center',gap:'6px',fontSize:'0.88rem'}}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/></svg> {PLATFORM==='mobile'?'':' Close'}✕
           </button>
         </div>
 
-        {/* Body: Left sidebar nav + Right content pane */}
-        <div style={{display:'flex',flex:1,overflow:'hidden',minHeight:0}}>
+        {/* Body: Tab nav + Content pane */}
+        <div style={{display:'flex',flex:1,overflow:'hidden',minHeight:0,flexDirection:PLATFORM==='mobile'?'column':'row'}}>
 
-          {/* Left Tab Navigation */}
-          <div style={{width:'185px',flexShrink:0,background:'#f8fafc',borderRight:'1px solid rgba(203,213,225,0.5)',display:'flex',flexDirection:'column',padding:'0.65rem',gap:'2px',overflowY:'auto'}}>
+          {/* Tab Navigation — vertical sidebar on desktop, horizontal strip on mobile */}
+          <div style={PLATFORM==='mobile' ? {
+            display:'flex',flexDirection:'row',overflowX:'auto',flexShrink:0,
+            background:'#f8fafc',borderBottom:'1px solid rgba(203,213,225,0.5)',
+            padding:'0 8px',gap:'2px',WebkitOverflowScrolling:'touch',
+          } : {
+            width:'185px',flexShrink:0,background:'#f8fafc',
+            borderRight:'1px solid rgba(203,213,225,0.5)',
+            display:'flex',flexDirection:'column',padding:'0.65rem',gap:'2px',overflowY:'auto',
+          }}>
             {[
               {id:'store',      label:'Store',      icon:'M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z'},
               {id:'appearance', label:'Appearance', icon:'M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z'},
@@ -906,23 +916,28 @@ function SettingsModal({ settings, onClose, onSave, cloudInfo, currentUser, posD
               {id:'cloud',      label:'Cloud',      icon:'M18 10h-1.26A8 8 0 109 20h9a5 5 0 000-10z'},
               ...(currentUser?.role === 'manager' ? [{id:'devices', label:'Devices', icon:'M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z'}] : []),
             ].map(tab => (
-              <button key={tab.id} onClick={() => setSettingsTab(tab.id)} style={{
+              <button key={tab.id} onClick={() => setSettingsTab(tab.id)} style={PLATFORM==='mobile' ? {
+                display:'flex',alignItems:'center',gap:'5px',padding:'10px 12px',borderRadius:'8px',
+                flexShrink:0,cursor:'pointer',transition:'all 0.15s',whiteSpace:'nowrap',
+                border:'none',borderBottom: settingsTab===tab.id ? '2.5px solid #2563eb' : '2.5px solid transparent',
+                background:'transparent',color: settingsTab===tab.id ? '#2563eb' : '#64748b',
+                fontWeight: settingsTab===tab.id ? 700 : 500,fontSize:'0.82rem',
+              } : {
                 display:'flex',alignItems:'center',gap:'10px',padding:'10px 12px',borderRadius:'10px',
                 width:'100%',textAlign:'left',cursor:'pointer',transition:'all 0.15s',
                 border: settingsTab===tab.id ? '1px solid rgba(37,99,235,0.2)' : '1px solid transparent',
                 background: settingsTab===tab.id ? 'rgba(37,99,235,0.08)' : 'transparent',
                 color: settingsTab===tab.id ? '#2563eb' : '#475569',
-                fontWeight: settingsTab===tab.id ? 700 : 500,
-                fontSize:'0.88rem',
+                fontWeight: settingsTab===tab.id ? 700 : 500,fontSize:'0.88rem',
               }}>
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}><path d={tab.icon}/></svg>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}><path d={tab.icon}/></svg>
                 {tab.label}
               </button>
             ))}
           </div>
 
-          {/* Right Content Area */}
-          <div ref={modalRef} style={{flex:1,overflowY:'auto',padding:'1.25rem 1.5rem',background:'#fff',minHeight:0}}>
+          {/* Content Area */}
+          <div ref={modalRef} style={{flex:1,overflowY:'auto',padding:PLATFORM==='mobile'?'1rem':'1.25rem 1.5rem',background:'#fff',minHeight:0}}>
             {/* ── STORE TAB ── */}
             {settingsTab === 'store' && (
               <div>
@@ -932,7 +947,7 @@ function SettingsModal({ settings, onClose, onSave, cloudInfo, currentUser, posD
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
                     Business Information
                   </h3>
-                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem'}}>
+                  <div style={{display:'grid',gridTemplateColumns:PLATFORM==='mobile'?'1fr':'1fr 1fr',gap:'0.75rem'}}>
                     <div>
                       <label style={{display:'block',fontSize:'0.72rem',fontWeight:700,color:'#6b7280',textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:'5px'}}>Company Name</label>
                       <input autoFocus type="text" value={companyName} onChange={e=>setCompanyName(e.target.value)} style={{width:'100%',padding:'9px 12px',borderRadius:'8px',border:'1px solid rgba(203,213,225,0.7)',background:'#fff',fontSize:'0.9rem',color:'#0f172a',outline:'none',boxSizing:'border-box'}} />
@@ -948,7 +963,7 @@ function SettingsModal({ settings, onClose, onSave, cloudInfo, currentUser, posD
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 010 20M12 2a15.3 15.3 0 000 20"/></svg>
                     Regional Settings
                   </h3>
-                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'0.75rem'}}>
+                  <div style={{display:'grid',gridTemplateColumns:PLATFORM==='mobile'?'1fr':'1fr 1fr 1fr',gap:'0.75rem'}}>
                     <div>
                       <label style={{display:'block',fontSize:'0.72rem',fontWeight:700,color:'#6b7280',textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:'5px'}}>Currency</label>
                       <input type="text" value={currency} onChange={e=>setCurrency(e.target.value)} placeholder="TSH" style={{width:'100%',padding:'9px 12px',borderRadius:'8px',border:'1px solid rgba(203,213,225,0.7)',background:'#fff',fontSize:'0.9rem',color:'#0f172a',outline:'none',boxSizing:'border-box'}} />
@@ -1305,7 +1320,12 @@ function SettingsModal({ settings, onClose, onSave, cloudInfo, currentUser, posD
                   setLoading(false);
                 }, [base, key]);
 
-                React.useEffect(() => { fetchDevices(); }, [fetchDevices]);
+                React.useEffect(() => {
+                  fetchDevices();
+                  const handler = () => fetchDevices();
+                  window.addEventListener('pos:device-registered', handler);
+                  return () => window.removeEventListener('pos:device-registered', handler);
+                }, [fetchDevices]);
 
                 const doAction = async () => {
                   if (!managerPin) { setActionMsg('Enter your manager PIN.'); return; }
@@ -7353,7 +7373,7 @@ function POSSystem() {
           setter(fresh);
         };
         await Promise.all([
-          mergeAndSet('products',   p,  (rows) => { setProducts(rows); setCsvURLFromRows(rows, monthKey()); }),
+          mergeAndSet('products',   p,  setProducts),
           mergeAndSet('sales',      s,  setSales),
           mergeAndSet('credits',    c,  setCredits),
           mergeAndSet('suppliers',  su, setSuppliers),
@@ -7407,6 +7427,10 @@ function POSSystem() {
             }
           })
           .catch(() => setCloudStatus('disconnected'));
+      });
+
+      socket.on('pos:device-registered', () => {
+        window.dispatchEvent(new CustomEvent('pos:device-registered'));
       });
 
       socket.on('disconnect', () => clearInterval(beat));
@@ -7715,7 +7739,8 @@ function POSSystem() {
   });
 
   const barcodeInputRef = useRef(null);
-  const isManager = currentUser?.role === 'manager';
+  const isManager = currentUser?.role === 'manager' && posDeviceType !== 'pos';
+  const [mobileTab, setMobileTab] = useState('sell');
 
   // Update lowStockThreshold when settings change
   useEffect(() => {
@@ -8140,15 +8165,18 @@ function POSSystem() {
       });
     }
 
-    // Update sales
+    // Update sales — push only the new sale delta, not full history
     setSales((prev) => {
       const updatedSales = [...prev, ...newSales];
-      setSalesCsvURLFromRows(updatedSales);
+      PesaDB.putAll('sales', updatedSales).catch(() => {});
+      socketPushData({ sales: newSales });
       syncSalesToCloud(updatedSales);
+      syncAllToCloud();
       return updatedSales;
     });
 
-    // Update stock
+    // Update stock — push only the products whose stock changed
+    const cartBarcodes = new Set(cart.map(c => c.barcode));
     setProducts((prev) => {
       const next = prev.map((p) => ({ ...p }));
       for (const item of cart) {
@@ -8157,7 +8185,13 @@ function POSSystem() {
           next[idx].available_stock = Math.max(0, (Number(next[idx].available_stock) || 0) - item.qty);
         }
       }
-      setCsvURLFromRows(next);
+      const csv = productsWithBatchesToCSV(next);
+      const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+      if (csvURL) URL.revokeObjectURL(csvURL);
+      setCsvURL(url);
+      setCsvFileName(`products_${monthKey()}.csv`);
+      PesaDB.putAll('products', next).catch(() => {});
+      socketPushData({ products: next.filter(p => cartBarcodes.has(p.barcode)) });
       return next;
     });
 
@@ -8457,70 +8491,95 @@ function POSSystem() {
         };
       })() : undefined}
     >
-      <header className="sticky top-0 z-50 relative shadow-2xl theme-header-gradient">
-        <div className="max-w-full px-6 py-3 flex items-center justify-between">
-          {/* Logo - Left */}
-          <div style={{display: 'flex', alignItems: 'center', gap: '12px', minWidth: 'max-content'}}>
-            {settings.showLogo && (
-              <div style={{padding: '4px', background: 'rgba(255,255,255,0.12)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.2)'}}>
-                <img src="PesaIcon.png" alt="Pesa POS" className="h-12 w-auto drop-shadow-lg" />
-              </div>
-            )}
+      {/* ── Mobile compact header ── */}
+      {PLATFORM === 'mobile' ? (
+        <header className="sticky top-0 z-50 shadow-xl theme-header-gradient" style={{padding:'0 14px',height:'56px',display:'flex',alignItems:'center',justifyContent:'space-between',flexShrink:0}}>
+          <div style={{display:'flex',alignItems:'center',gap:'8px',minWidth:0,flex:1}}>
+            {settings.showLogo && <img src="PesaIcon.png" alt="Pesa POS" style={{height:'28px',width:'auto',filter:'drop-shadow(0 2px 4px rgba(0,0,0,0.3))',flexShrink:0}} />}
+            <div style={{minWidth:0}}>
+              <div style={{color:'#fff',fontWeight:800,fontSize:'0.95rem',letterSpacing:'-0.01em',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{settings.companyName || 'Pesa POS'}</div>
+              {settings.tagline && <div style={{color:'rgba(255,255,255,0.6)',fontSize:'0.62rem',marginTop:'-1px',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{settings.tagline}</div>}
+            </div>
           </div>
-
-          {/* Center - Company Name & Brand */}
-          <div className="flex flex-col items-center flex-1">
-            <h1 className="text-3xl font-bold" style={{color: '#ffffff', textShadow: '0 2px 8px rgba(0,0,0,0.3)', letterSpacing: '-0.02em'}}>{settings.companyName}</h1>
-            <p className="text-xs font-medium mt-0.5 theme-header-subtext" style={{letterSpacing: '0.08em'}}>{settings.tagline}</p>
-          </div>
-
-          {/* Right - User Info & Settings */}
-          <div style={{display: 'flex', alignItems: 'center', gap: '10px', minWidth: 'max-content'}}>
-            {currentUser ? (
-              <div className="flex items-center gap-3 px-4 py-2 rounded-xl" style={{background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.2)', backdropFilter: 'blur(8px)'}}>
-                <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold" style={{background: 'linear-gradient(135deg, #10b981, #059669)', color: 'white', boxShadow: '0 2px 8px rgba(16,185,129,0.4)'}}>
-                  {currentUser.name.charAt(0).toUpperCase()}
-                </div>
-                <div className="flex flex-col items-start">
-                  <span className="font-bold text-sm text-white">{currentUser.name}</span>
-                  <span className="text-xs font-semibold uppercase tracking-wide" style={{color: 'rgba(167,243,208,0.9)'}}>{currentUser.role}</span>
-                </div>
-                <button onClick={handleLogout} className="ml-1 text-xs font-bold px-2 py-1 rounded-lg transition-all hover:scale-105" style={{color: 'rgba(252,165,165,0.9)', background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)'}}>
-                  Logout
-                </button>
-              </div>
-            ) : (
-              <button onClick={() => setShowLogin(true)} className="px-4 py-2 font-semibold rounded-xl text-sm transition-all hover:scale-105" style={{background: 'linear-gradient(135deg, #10b981, #059669)', color: 'white', boxShadow: '0 4px 12px rgba(16,185,129,0.35)', border: 'none'}}>
-                🔑 Login
-              </button>
-            )}
-            {/* Cloud connection status badge */}
+          <div style={{display:'flex',alignItems:'center',gap:'8px',flexShrink:0}}>
             {settings?.posmsLicenseKey && (
-              <div
-                title={cloudStatus === 'active' ? `POS MS connected${cloudInfo?.plan_name ? ' — ' + cloudInfo.plan_name : ''}` : cloudStatus === 'checking' ? 'Checking license...' : cloudStatus === 'expired' ? 'License expired' : cloudStatus === 'invalid' ? 'Invalid license' : 'POS MS disconnected'}
-                onClick={() => setShowSettings(true)}
-                style={{
-                  display:'flex',alignItems:'center',gap:'5px',padding:'5px 10px',borderRadius:'10px',cursor:'pointer',
-                  background: cloudStatus==='active' ? 'rgba(16,185,129,0.18)' : cloudStatus==='checking' ? 'rgba(245,158,11,0.18)' : 'rgba(239,68,68,0.18)',
-                  border: `1px solid ${cloudStatus==='active' ? 'rgba(16,185,129,0.4)' : cloudStatus==='checking' ? 'rgba(245,158,11,0.4)' : 'rgba(239,68,68,0.4)'}`,
-                }}
-              >
-                <span style={{width:8,height:8,borderRadius:'50%',background: cloudStatus==='active' ? '#10b981' : cloudStatus==='checking' ? '#f59e0b' : '#ef4444',display:'inline-block'}}></span>
-                <span style={{fontSize:'0.72rem',fontWeight:700,color:'#fff'}}>
-                  {cloudStatus==='active' ? 'Cloud Active' : cloudStatus==='checking' ? 'Checking...' : cloudStatus==='expired' ? 'Expired' : cloudStatus==='invalid' ? 'Invalid Key' : 'Disconnected'}
-                </span>
-              </div>
+              <div title={cloudStatus} style={{width:8,height:8,borderRadius:'50%',background:cloudStatus==='active'?'#10b981':cloudStatus==='checking'?'#f59e0b':'#ef4444',boxShadow:`0 0 0 2px rgba(255,255,255,0.25)`,flexShrink:0}}></div>
             )}
-            <button onClick={() => setShowSettings(true)} className="w-10 h-10 rounded-xl flex items-center justify-center transition-all hover:scale-110" style={{background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.2)', color: 'white', fontSize: '18px'}}>
-              ⚙️
+            {currentUser ? (
+              <>
+                <div style={{background:'rgba(255,255,255,0.14)',border:'1px solid rgba(255,255,255,0.22)',borderRadius:'20px',padding:'4px 10px 4px 4px',display:'flex',alignItems:'center',gap:'6px',maxWidth:'130px'}}>
+                  <div style={{width:'24px',height:'24px',borderRadius:'50%',background:'linear-gradient(135deg,#10b981,#059669)',color:'white',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'0.68rem',fontWeight:800,flexShrink:0}}>
+                    {currentUser.name.charAt(0).toUpperCase()}
+                  </div>
+                  <span style={{color:'rgba(255,255,255,0.9)',fontSize:'0.72rem',fontWeight:700,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{currentUser.name}</span>
+                </div>
+                <button onClick={handleLogout} style={{background:'rgba(239,68,68,0.18)',border:'1px solid rgba(239,68,68,0.35)',borderRadius:'8px',padding:'6px 10px',color:'rgba(252,165,165,0.9)',fontWeight:700,fontSize:'0.68rem',cursor:'pointer',whiteSpace:'nowrap'}}>Out</button>
+              </>
+            ) : (
+              <button onClick={() => setShowLogin(true)} style={{background:'linear-gradient(135deg,#10b981,#059669)',border:'none',borderRadius:'10px',padding:'7px 14px',color:'white',fontWeight:700,fontSize:'0.78rem',cursor:'pointer'}}>Login</button>
+            )}
+            <button onClick={() => setShowSettings(true)} style={{background:'rgba(255,255,255,0.12)',border:'1px solid rgba(255,255,255,0.2)',borderRadius:'10px',width:'36px',height:'36px',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',flexShrink:0}}>
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 15a3 3 0 100-6 3 3 0 000 6z"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
             </button>
           </div>
-        </div>
-      </header>
+        </header>
+      ) : (
+        /* ── Desktop header ── */
+        <header className="sticky top-0 z-50 relative shadow-2xl theme-header-gradient">
+          <div className="max-w-full px-6 py-3 flex items-center justify-between">
+            <div style={{display: 'flex', alignItems: 'center', gap: '12px', minWidth: 'max-content'}}>
+              {settings.showLogo && (
+                <div style={{padding: '4px', background: 'rgba(255,255,255,0.12)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.2)'}}>
+                  <img src="PesaIcon.png" alt="Pesa POS" className="h-12 w-auto drop-shadow-lg" />
+                </div>
+              )}
+            </div>
+            <div className="flex flex-col items-center flex-1">
+              <h1 className="text-3xl font-bold" style={{color: '#ffffff', textShadow: '0 2px 8px rgba(0,0,0,0.3)', letterSpacing: '-0.02em'}}>{settings.companyName}</h1>
+              <p className="text-xs font-medium mt-0.5 theme-header-subtext" style={{letterSpacing: '0.08em'}}>{settings.tagline}</p>
+            </div>
+            <div style={{display: 'flex', alignItems: 'center', gap: '10px', minWidth: 'max-content'}}>
+              {currentUser ? (
+                <div className="flex items-center gap-3 px-4 py-2 rounded-xl" style={{background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.2)', backdropFilter: 'blur(8px)'}}>
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold" style={{background: 'linear-gradient(135deg, #10b981, #059669)', color: 'white', boxShadow: '0 2px 8px rgba(16,185,129,0.4)'}}>
+                    {currentUser.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="flex flex-col items-start">
+                    <span className="font-bold text-sm text-white">{currentUser.name}</span>
+                    <span className="text-xs font-semibold uppercase tracking-wide" style={{color: 'rgba(167,243,208,0.9)'}}>{currentUser.role}</span>
+                  </div>
+                  <button onClick={handleLogout} className="ml-1 text-xs font-bold px-2 py-1 rounded-lg transition-all hover:scale-105" style={{color: 'rgba(252,165,165,0.9)', background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)'}}>
+                    Logout
+                  </button>
+                </div>
+              ) : (
+                <button onClick={() => setShowLogin(true)} className="px-4 py-2 font-semibold rounded-xl text-sm transition-all hover:scale-105" style={{background: 'linear-gradient(135deg, #10b981, #059669)', color: 'white', boxShadow: '0 4px 12px rgba(16,185,129,0.35)', border: 'none'}}>
+                  🔑 Login
+                </button>
+              )}
+              {settings?.posmsLicenseKey && (
+                <div
+                  title={cloudStatus === 'active' ? `POS MS connected${cloudInfo?.plan_name ? ' — ' + cloudInfo.plan_name : ''}` : cloudStatus === 'checking' ? 'Checking license...' : cloudStatus === 'expired' ? 'License expired' : cloudStatus === 'invalid' ? 'Invalid license' : 'POS MS disconnected'}
+                  onClick={() => setShowSettings(true)}
+                  style={{display:'flex',alignItems:'center',gap:'5px',padding:'5px 10px',borderRadius:'10px',cursor:'pointer',background: cloudStatus==='active' ? 'rgba(16,185,129,0.18)' : cloudStatus==='checking' ? 'rgba(245,158,11,0.18)' : 'rgba(239,68,68,0.18)',border: `1px solid ${cloudStatus==='active' ? 'rgba(16,185,129,0.4)' : cloudStatus==='checking' ? 'rgba(245,158,11,0.4)' : 'rgba(239,68,68,0.4)'}`}}
+                >
+                  <span style={{width:8,height:8,borderRadius:'50%',background: cloudStatus==='active' ? '#10b981' : cloudStatus==='checking' ? '#f59e0b' : '#ef4444',display:'inline-block'}}></span>
+                  <span style={{fontSize:'0.72rem',fontWeight:700,color:'#fff'}}>
+                    {cloudStatus==='active' ? 'Cloud Active' : cloudStatus==='checking' ? 'Checking...' : cloudStatus==='expired' ? 'Expired' : cloudStatus==='invalid' ? 'Invalid Key' : 'Disconnected'}
+                  </span>
+                </div>
+              )}
+              <button onClick={() => setShowSettings(true)} className="w-10 h-10 rounded-xl flex items-center justify-center transition-all hover:scale-110" style={{background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.2)', color: 'white', fontSize: '18px'}}>
+                ⚙️
+              </button>
+            </div>
+          </div>
+        </header>
+      )}
 
       <main className="flex-1 overflow-x-hidden">
-        {/* Manager Dashboard View */}
-        {isManager && (
+        {/* Manager Dashboard View — Desktop */}
+        {isManager && PLATFORM !== 'mobile' && (
           <div className="flex h-full">
             {/* Left Fixed Sidebar */}
             <div style={{width: '28%', minWidth: '320px', maxWidth: '450px', flexShrink: 0, position: 'fixed', left: 0, top: '120px', height: 'calc(100vh - 120px)', zIndex: 40}}>
@@ -8877,8 +8936,142 @@ function POSSystem() {
           </div>
         )}
 
-        {/* Non-Manager Cashier View */}
-        {!isManager && currentUser && (
+        {/* Manager Mobile Layout */}
+        {isManager && PLATFORM === 'mobile' && (
+          <div style={{flex:1,display:'flex',flexDirection:'column',height:'calc(100dvh - 56px)',overflow:'hidden'}}>
+            {mobileTab === 'sell' && (
+              <div style={{flex:1,overflowY:'auto',WebkitOverflowScrolling:'touch',paddingBottom:'70px'}}>
+                <div style={{padding:'10px 12px',background:'#fff',borderBottom:'1px solid #e2e8f0',position:'sticky',top:0,zIndex:10}}>
+                  <ProductSearchDropdown products={products} onSelect={(p)=>{setSelectedProductDetail(p);setShowProductDetail(true);}} onQueryChange={setSearchQuery} placeholder="Search products…" />
+                </div>
+                <div style={{padding:'12px',display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:'10px'}}>
+                  {products.slice(0, settings.quickAccessCount || 50).map(p => {
+                    const stock = Number(p.available_stock || 0);
+                    return (
+                      <div key={p.barcode} onClick={()=>addToCartByBarcode(p.barcode)} style={{background:'white',border:'1.5px solid #e2e8f0',borderRadius:'14px',padding:'14px 12px',cursor:'pointer',boxShadow:'0 2px 8px rgba(0,0,0,0.04)',WebkitTapHighlightColor:'transparent',userSelect:'none'}}>
+                        <div style={{fontSize:'0.84rem',fontWeight:700,color:'#0f172a',marginBottom:'6px',lineHeight:1.3,wordBreak:'break-word'}}>{p.name}</div>
+                        <div style={{fontSize:'1rem',fontWeight:800,color:'#2563eb',marginBottom:'4px'}}>{settings.currency} {Number(p.price).toLocaleString()}</div>
+                        <div style={{display:'flex',alignItems:'center',gap:'4px'}}>
+                          <div style={{width:6,height:6,borderRadius:'50%',background:stock<=0?'#ef4444':stock<=(settings?.lowStockThreshold||5)?'#f59e0b':'#10b981',flexShrink:0}}></div>
+                          <span style={{fontSize:'0.68rem',color:'#94a3b8'}}>Stock: {stock.toLocaleString()}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+            {mobileTab === 'cart' && (
+              <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
+                <div className="theme-cart-header-gradient" style={{padding:'14px 16px',flexShrink:0}}>
+                  <div style={{fontWeight:800,fontSize:'0.95rem',color:'white'}}>🛒 Shopping Cart</div>
+                  <div style={{fontSize:'0.75rem',color:'rgba(255,255,255,0.75)',marginTop:'2px'}}>{cart.reduce((s,i)=>s+i.qty,0)} items — {settings.currency} {getTotalAmount().toLocaleString()}</div>
+                </div>
+                <div style={{flex:1,overflowY:'auto',padding:'10px 12px',WebkitOverflowScrolling:'touch'}}>
+                  {cart.length === 0 ? (
+                    <div style={{textAlign:'center',padding:'60px 20px',color:'#94a3b8'}}>
+                      <div style={{fontSize:'4rem',marginBottom:'12px',opacity:0.2}}>🛒</div>
+                      <p style={{fontWeight:700,fontSize:'0.95rem'}}>Cart is empty</p>
+                      <p style={{fontSize:'0.78rem',marginTop:'6px',color:'#cbd5e1'}}>Tap a product in Sell tab to add</p>
+                    </div>
+                  ) : (
+                    <div style={{display:'flex',flexDirection:'column',gap:'8px'}}>
+                      {cart.map(item => (
+                        <div key={item.barcode} style={{background:'white',border:'1.5px solid #e2e8f0',borderRadius:'14px',padding:'12px',boxShadow:'0 1px 6px rgba(0,0,0,0.04)'}}>
+                          <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'10px'}}>
+                            <span style={{fontWeight:700,fontSize:'0.88rem',color:'#0f172a',flex:1,paddingRight:'8px',lineHeight:1.3}}>{item.name}</span>
+                            <button onClick={()=>removeItem(item.barcode)} style={{width:'28px',height:'28px',borderRadius:'50%',background:'#fef2f2',border:'1.5px solid #fecaca',color:'#ef4444',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'0.9rem',flexShrink:0}}>✕</button>
+                          </div>
+                          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+                            <div style={{display:'flex',alignItems:'center',gap:'6px'}}>
+                              <button onClick={()=>adjustCartQty(item.barcode,-1)} style={{width:'40px',height:'40px',borderRadius:'10px',background:'#f1f5f9',border:'1.5px solid #cbd5e1',color:'#475569',cursor:'pointer',fontSize:'1.3rem',display:'flex',alignItems:'center',justifyContent:'center'}}>−</button>
+                              <span style={{fontSize:'1rem',fontWeight:800,color:'white',width:'40px',height:'40px',borderRadius:'10px',display:'flex',alignItems:'center',justifyContent:'center',background:'var(--gradient-badge)'}}>{item.qty}</span>
+                              <button onClick={()=>adjustCartQty(item.barcode,1)} style={{width:'40px',height:'40px',borderRadius:'10px',background:'#f0fdf4',border:'1.5px solid #86efac',color:'#16a34a',cursor:'pointer',fontSize:'1.3rem',display:'flex',alignItems:'center',justifyContent:'center'}}>+</button>
+                            </div>
+                            <div style={{textAlign:'right'}}>
+                              <div style={{fontSize:'0.72rem',color:'#94a3b8'}}>{settings.currency} {item.price.toLocaleString()} each</div>
+                              <div style={{fontSize:'1rem',fontWeight:800,color:'#0f172a'}}>{settings.currency} {(item.price*item.qty).toLocaleString()}</div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                {cart.length > 0 && (
+                  <div style={{padding:'12px',borderTop:'2px solid #e2e8f0',background:'white',flexShrink:0}}>
+                    <div className="theme-dark-surface" style={{borderRadius:'12px',padding:'12px 16px',marginBottom:'10px'}}>
+                      <div style={{fontSize:'0.7rem',color:'rgba(147,197,253,0.8)',fontWeight:700,textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:'4px'}}>TOTAL ({cart.reduce((s,i)=>s+i.qty,0)} items)</div>
+                      <div style={{fontSize:'1.7rem',fontWeight:800,color:'white'}}>{settings.currency} {getTotalAmount().toLocaleString()}</div>
+                    </div>
+                    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'8px'}}>
+                      <button onClick={clearCart} style={{height:'48px',borderRadius:'12px',fontWeight:700,fontSize:'0.9rem',border:'1.5px solid #e2e8f0',background:'#f8fafc',color:'#64748b',cursor:'pointer'}}>🗑️ Clear</button>
+                      <button onClick={()=>setShowPaymentModal(true)} disabled={cloudStatus!=='active'} style={{height:'48px',borderRadius:'12px',fontWeight:800,fontSize:'0.9rem',border:'none',background:'linear-gradient(135deg,#059669,#047857)',color:'white',cursor:'pointer',boxShadow:'0 4px 12px rgba(5,150,105,0.3)',opacity:cloudStatus!=='active'?0.5:1}}>💳 Checkout</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+            {mobileTab === 'menu' && (
+              <div style={{flex:1,overflowY:'auto',WebkitOverflowScrolling:'touch',paddingBottom:'70px'}}>
+                {(() => {
+                  const todayStr = new Date().toDateString();
+                  const todaySales = sales.filter(s=>new Date(s.timestamp).toDateString()===todayStr);
+                  const todayRevenue = todaySales.reduce((sum,s)=>sum+(Number(s.total)||0),0);
+                  const todayTxns = new Set(todaySales.map(s=>s.receipt_number)).size;
+                  const lowStockCount = products.filter(p=>Number(p.available_stock||0)<=(settings?.lowStockThreshold||5)).length;
+                  return (
+                    <div style={{padding:'12px',display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:'8px'}}>
+                      <div style={{background:'linear-gradient(135deg,#eff6ff,#dbeafe)',border:'1px solid #bfdbfe',borderRadius:'12px',padding:'12px',textAlign:'center'}}>
+                        <div style={{fontSize:'0.66rem',color:'#1d4ed8',fontWeight:700,textTransform:'uppercase',letterSpacing:'0.04em'}}>Today Sales</div>
+                        <div style={{fontSize:'1.3rem',fontWeight:800,color:'#1e3a8a',marginTop:'4px'}}>{todayTxns} txn</div>
+                      </div>
+                      <div style={{background:'linear-gradient(135deg,#f0fdf4,#dcfce7)',border:'1px solid #86efac',borderRadius:'12px',padding:'12px',textAlign:'center'}}>
+                        <div style={{fontSize:'0.66rem',color:'#15803d',fontWeight:700,textTransform:'uppercase',letterSpacing:'0.04em'}}>Revenue</div>
+                        <div style={{fontSize:'1.1rem',fontWeight:800,color:'#14532d',marginTop:'4px'}}>{settings.currency} {todayRevenue.toLocaleString()}</div>
+                      </div>
+                      <div style={{background:lowStockCount>0?'linear-gradient(135deg,#fef3c7,#fde68a)':'linear-gradient(135deg,#f8fafc,#f1f5f9)',border:lowStockCount>0?'1px solid #fbbf24':'1px solid #e2e8f0',borderRadius:'12px',padding:'12px',textAlign:'center'}}>
+                        <div style={{fontSize:'0.66rem',color:lowStockCount>0?'#92400e':'#64748b',fontWeight:700,textTransform:'uppercase',letterSpacing:'0.04em'}}>Low Stock</div>
+                        <div style={{fontSize:'1.3rem',fontWeight:800,color:lowStockCount>0?'#b45309':'#94a3b8',marginTop:'4px'}}>{lowStockCount}</div>
+                      </div>
+                      <div style={{background:'linear-gradient(135deg,#f5f3ff,#ede9fe)',border:'1px solid #c4b5fd',borderRadius:'12px',padding:'12px',textAlign:'center'}}>
+                        <div style={{fontSize:'0.66rem',color:'#6d28d9',fontWeight:700,textTransform:'uppercase',letterSpacing:'0.04em'}}>Products</div>
+                        <div style={{fontSize:'1.3rem',fontWeight:800,color:'#4c1d95',marginTop:'4px'}}>{products.length}</div>
+                      </div>
+                    </div>
+                  );
+                })()}
+                {[
+                  {label:'Sales & Analytics',items:[{label:'Dashboard',icon:'📊',action:()=>setShowDashboard(true)},{label:'Sales History',icon:'📈',action:()=>setShowSales(true)},{label:'Analytics',icon:'📉',action:()=>setShowAnalytics(true)},{label:'Performance',icon:'🏆',action:()=>setShowEmployeePerformance(true)}]},
+                  {label:'Inventory',items:[{label:'Add Product',icon:'➕',action:()=>{setPendingBarcode('');setShowAddProduct(true);}},{label:'Inventory',icon:'📦',action:()=>setShowInventory(true)},{label:'Add Stock',icon:'📥',action:()=>setShowStockModal(true)},{label:'Stock History',icon:'🕓',action:()=>setShowStockHistory(true)}]},
+                  {label:'Business',items:[{label:'Credits',icon:'💳',action:()=>setShowCreditManagement(true)},{label:'Suppliers',icon:'🚚',action:()=>setShowSupplierManagement(true)},{label:'Quotations',icon:'📄',action:()=>setShowQuotations(true)},{label:'Expenses',icon:'💰',action:()=>setShowExpenses(true)}]},
+                  {label:'System',items:[{label:'Users',icon:'👥',action:()=>setShowUserManagement(true)},{label:'Backup',icon:'💾',action:()=>setShowJSONData(true)},{label:'Data Tools',icon:'🛠️',action:()=>setShowDataTools(true)}]},
+                ].map(section=>(
+                  <div key={section.label} style={{padding:'0 12px',marginBottom:'10px'}}>
+                    <div style={{fontSize:'0.65rem',fontWeight:800,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'0.08em',padding:'8px 2px 5px'}}>{section.label}</div>
+                    <div style={{background:'white',border:'1.5px solid #e2e8f0',borderRadius:'14px',overflow:'hidden',boxShadow:'0 1px 6px rgba(0,0,0,0.04)'}}>
+                      {section.items.map((item,idx)=>(
+                        <button key={item.label} onClick={item.action} style={{display:'flex',alignItems:'center',gap:'12px',width:'100%',padding:'14px 16px',background:'transparent',border:'none',cursor:'pointer',textAlign:'left',borderTop:idx>0?'1px solid #f1f5f9':'none',WebkitTapHighlightColor:'transparent'}}>
+                          <span style={{fontSize:'1.1rem',flexShrink:0}}>{item.icon}</span>
+                          <span style={{fontSize:'0.9rem',fontWeight:600,color:'#0f172a',flex:1}}>{item.label}</span>
+                          <span style={{color:'#cbd5e1',fontSize:'1.1rem'}}>›</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+                <div style={{padding:'0 12px 12px'}}>
+                  <button onClick={downloadAllCSV} style={{width:'100%',height:'46px',borderRadius:'12px',background:'var(--gradient-badge)',color:'white',border:'none',fontWeight:700,fontSize:'0.88rem',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:'8px',boxShadow:'0 4px 12px rgba(30,58,138,0.2)'}}>
+                    📥 Export All CSV
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Non-Manager Cashier View — Desktop */}
+        {!isManager && currentUser && PLATFORM !== 'mobile' && (
           <div className="flex h-full">
             {/* Left Sidebar - Teller Info & Quick Actions */}
             <div style={{width: '22%', minWidth: '280px', maxWidth: '380px', flexShrink: 0, position: 'fixed', left: 0, top: '120px', height: 'calc(100vh - 120px)', zIndex: 40}}>
@@ -9092,6 +9285,110 @@ function POSSystem() {
                 )}
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Teller Mobile Layout */}
+        {!isManager && currentUser && PLATFORM === 'mobile' && (
+          <div style={{flex:1,display:'flex',flexDirection:'column',height:'calc(100dvh - 56px)',overflow:'hidden'}}>
+            {mobileTab === 'sell' && (
+              <div style={{flex:1,overflowY:'auto',WebkitOverflowScrolling:'touch',paddingBottom:'70px'}}>
+                <div style={{padding:'10px 12px',background:'#fff',borderBottom:'1px solid #e2e8f0',position:'sticky',top:0,zIndex:10}}>
+                  <ProductSearchDropdown products={products} onSelect={(p)=>{addToCartByBarcode(p.barcode);setMobileTab('cart');}} placeholder="Search products…" />
+                </div>
+                <div style={{padding:'12px',display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:'10px'}}>
+                  {products.map(p => {
+                    const stock = Number(p.available_stock || 0);
+                    return (
+                      <div key={p.barcode} onClick={()=>{addToCartByBarcode(p.barcode);}} style={{background:'white',border:'1.5px solid #e2e8f0',borderRadius:'14px',padding:'14px 12px',cursor:'pointer',boxShadow:'0 2px 8px rgba(0,0,0,0.04)',WebkitTapHighlightColor:'transparent',userSelect:'none'}}>
+                        <div style={{fontSize:'0.84rem',fontWeight:700,color:'#0f172a',marginBottom:'6px',lineHeight:1.3,wordBreak:'break-word'}}>{p.name}</div>
+                        <div style={{fontSize:'1rem',fontWeight:800,color:'#2563eb',marginBottom:'4px'}}>{settings.currency} {Number(p.price).toLocaleString()}</div>
+                        <div style={{display:'flex',alignItems:'center',gap:'4px'}}>
+                          <div style={{width:6,height:6,borderRadius:'50%',background:stock<=0?'#ef4444':stock<=(settings?.lowStockThreshold||5)?'#f59e0b':'#10b981',flexShrink:0}}></div>
+                          <span style={{fontSize:'0.68rem',color:'#94a3b8'}}>Stock: {stock.toLocaleString()}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+            {mobileTab === 'cart' && (
+              <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
+                <div className="theme-cart-header-gradient" style={{padding:'14px 16px',flexShrink:0}}>
+                  <div style={{fontWeight:800,fontSize:'0.95rem',color:'white'}}>🛒 Shopping Cart</div>
+                  <div style={{fontSize:'0.75rem',color:'rgba(255,255,255,0.75)',marginTop:'2px'}}>{cart.reduce((s,i)=>s+i.qty,0)} items — {settings.currency} {getTotalAmount().toLocaleString()}</div>
+                </div>
+                <div style={{flex:1,overflowY:'auto',padding:'10px 12px',WebkitOverflowScrolling:'touch'}}>
+                  {cart.length === 0 ? (
+                    <div style={{textAlign:'center',padding:'60px 20px',color:'#94a3b8'}}>
+                      <div style={{fontSize:'4rem',marginBottom:'12px',opacity:0.2}}>🛒</div>
+                      <p style={{fontWeight:700,fontSize:'0.95rem'}}>Cart is empty</p>
+                      <p style={{fontSize:'0.78rem',marginTop:'6px',color:'#cbd5e1'}}>Tap a product in Sell tab to add</p>
+                    </div>
+                  ) : (
+                    <div style={{display:'flex',flexDirection:'column',gap:'8px'}}>
+                      {cart.map(item => (
+                        <div key={item.barcode} style={{background:'white',border:'1.5px solid #e2e8f0',borderRadius:'14px',padding:'12px',boxShadow:'0 1px 6px rgba(0,0,0,0.04)'}}>
+                          <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'10px'}}>
+                            <span style={{fontWeight:700,fontSize:'0.88rem',color:'#0f172a',flex:1,paddingRight:'8px',lineHeight:1.3}}>{item.name}</span>
+                            <button onClick={()=>removeItem(item.barcode)} style={{width:'28px',height:'28px',borderRadius:'50%',background:'#fef2f2',border:'1.5px solid #fecaca',color:'#ef4444',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'0.9rem',flexShrink:0}}>✕</button>
+                          </div>
+                          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+                            <div style={{display:'flex',alignItems:'center',gap:'6px'}}>
+                              <button onClick={()=>adjustCartQty(item.barcode,-1)} style={{width:'40px',height:'40px',borderRadius:'10px',background:'#f1f5f9',border:'1.5px solid #cbd5e1',color:'#475569',cursor:'pointer',fontSize:'1.3rem',display:'flex',alignItems:'center',justifyContent:'center'}}>−</button>
+                              <span style={{fontSize:'1rem',fontWeight:800,color:'white',width:'40px',height:'40px',borderRadius:'10px',display:'flex',alignItems:'center',justifyContent:'center',background:'var(--gradient-badge)'}}>{item.qty}</span>
+                              <button onClick={()=>adjustCartQty(item.barcode,1)} style={{width:'40px',height:'40px',borderRadius:'10px',background:'#f0fdf4',border:'1.5px solid #86efac',color:'#16a34a',cursor:'pointer',fontSize:'1.3rem',display:'flex',alignItems:'center',justifyContent:'center'}}>+</button>
+                            </div>
+                            <div style={{textAlign:'right'}}>
+                              <div style={{fontSize:'0.72rem',color:'#94a3b8'}}>{settings.currency} {item.price.toLocaleString()} each</div>
+                              <div style={{fontSize:'1rem',fontWeight:800,color:'#0f172a'}}>{settings.currency} {(item.price*item.qty).toLocaleString()}</div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                {cart.length > 0 && (
+                  <div style={{padding:'12px',borderTop:'2px solid #e2e8f0',background:'white',flexShrink:0}}>
+                    <div className="theme-dark-surface" style={{borderRadius:'12px',padding:'12px 16px',marginBottom:'10px'}}>
+                      <div style={{fontSize:'0.7rem',color:'rgba(147,197,253,0.8)',fontWeight:700,textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:'4px'}}>TOTAL ({cart.reduce((s,i)=>s+i.qty,0)} items)</div>
+                      <div style={{fontSize:'1.7rem',fontWeight:800,color:'white'}}>{settings.currency} {getTotalAmount().toLocaleString()}</div>
+                    </div>
+                    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'8px'}}>
+                      <button onClick={clearCart} style={{height:'48px',borderRadius:'12px',fontWeight:700,fontSize:'0.9rem',border:'1.5px solid #e2e8f0',background:'#f8fafc',color:'#64748b',cursor:'pointer'}}>🗑️ Clear</button>
+                      <button onClick={()=>setShowPaymentModal(true)} disabled={cloudStatus!=='active'} style={{height:'48px',borderRadius:'12px',fontWeight:800,fontSize:'0.9rem',border:'none',background:'linear-gradient(135deg,#059669,#047857)',color:'white',cursor:'pointer',boxShadow:'0 4px 12px rgba(5,150,105,0.3)',opacity:cloudStatus!=='active'?0.5:1}}>💳 Checkout</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Mobile Bottom Navigation */}
+        {PLATFORM === 'mobile' && currentUser && (
+          <div style={{position:'fixed',bottom:0,left:0,right:0,zIndex:200,background:'white',borderTop:'1.5px solid #e2e8f0',display:'flex',alignItems:'stretch',boxShadow:'0 -4px 20px rgba(0,0,0,0.09)',paddingBottom:'env(safe-area-inset-bottom)'}}>
+            <button onClick={()=>setMobileTab('sell')} style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'8px 0 6px',background:'transparent',border:'none',cursor:'pointer',color:mobileTab==='sell'?'#2563eb':'#94a3b8',minHeight:'62px',transition:'color 0.15s'}}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 001.99 1.61h9.72a2 2 0 001.99-1.61L23 6H6"/></svg>
+              <span style={{fontSize:'0.6rem',fontWeight:700,marginTop:'3px',letterSpacing:'0.02em'}}>Sell</span>
+            </button>
+            <button onClick={()=>setMobileTab('cart')} style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'8px 0 6px',background:'transparent',border:'none',cursor:'pointer',color:mobileTab==='cart'?'#2563eb':'#94a3b8',minHeight:'62px',position:'relative',transition:'color 0.15s'}}>
+              {cart.length > 0 && (
+                <div style={{position:'absolute',top:'8px',right:'calc(50% - 18px)',background:'#ef4444',color:'white',borderRadius:'50%',width:'18px',height:'18px',fontSize:'0.58rem',fontWeight:800,display:'flex',alignItems:'center',justifyContent:'center',zIndex:1}}>
+                  {cart.reduce((s,i)=>s+i.qty,0) > 9 ? '9+' : cart.reduce((s,i)=>s+i.qty,0)}
+                </div>
+              )}
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+              <span style={{fontSize:'0.6rem',fontWeight:700,marginTop:'3px',letterSpacing:'0.02em'}}>Cart</span>
+            </button>
+            {isManager && (
+              <button onClick={()=>setMobileTab('menu')} style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'8px 0 6px',background:'transparent',border:'none',cursor:'pointer',color:mobileTab==='menu'?'#2563eb':'#94a3b8',minHeight:'62px',transition:'color 0.15s'}}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                <span style={{fontSize:'0.6rem',fontWeight:700,marginTop:'3px',letterSpacing:'0.02em'}}>Menu</span>
+              </button>
+            )}
           </div>
         )}
 
