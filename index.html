@@ -2647,8 +2647,8 @@ function InventoryModal({ products, onClose, onDeleteSelected, onDeleteAll, onOp
         </div>
 
         {/* Table */}
-        <div className="flex-1 overflow-y-auto" style={{padding:'0 1.25rem 1.25rem',minHeight:0}}>
-          <div style={{background:'#fff',borderRadius:'14px',border:'1px solid rgba(203,213,225,0.5)',overflow:'hidden',boxShadow:'0 1px 8px rgba(15,23,42,0.04)'}}>
+        <div className="flex-1 overflow-y-auto" style={{padding:'0 1.25rem 1.25rem',minHeight:0,overflowX:'auto'}}>
+          <div style={{background:'#fff',borderRadius:'14px',border:'1px solid rgba(203,213,225,0.5)',overflow:'visible',boxShadow:'0 1px 8px rgba(15,23,42,0.04)',minWidth:PLATFORM==='mobile'?'520px':'auto'}}>
             <table style={{width:'100%',borderCollapse:'collapse',fontSize:'0.875rem'}}>
               <thead>
                 <tr style={{background:'linear-gradient(90deg,#f8fafc,#f1f5f9)'}}>
@@ -4928,8 +4928,8 @@ function ExpensesModal({ expenses, settings, onClose, onAddExpense, onDeleteExpe
         </div>
 
         {/* Table */}
-        <div className="flex-1 overflow-y-auto" style={{padding:'0 1.25rem 1.25rem',minHeight:0}}>
-          <div style={{background:'#fff',borderRadius:'14px',border:'1px solid rgba(203,213,225,0.5)',overflow:'hidden',boxShadow:'0 1px 8px rgba(15,23,42,0.04)'}}>
+        <div className="flex-1 overflow-y-auto" style={{padding:'0 1.25rem 1.25rem',minHeight:0,overflowX:'auto'}}>
+          <div style={{background:'#fff',borderRadius:'14px',border:'1px solid rgba(203,213,225,0.5)',overflow:'visible',boxShadow:'0 1px 8px rgba(15,23,42,0.04)',minWidth:PLATFORM==='mobile'?'520px':'auto'}}>
             <table style={{width:'100%',borderCollapse:'collapse',fontSize:'0.875rem'}}>
               <thead>
                 <tr style={{background:'linear-gradient(90deg,#f8fafc,#f1f5f9)'}}>
