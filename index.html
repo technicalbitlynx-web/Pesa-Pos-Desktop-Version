@@ -7702,8 +7702,17 @@ function POSSystem() {
         PesaDB.getAll('suppliers'), PesaDB.getAll('expenses'),
         PesaDB.getAll('quotations'),
       ]);
-      if (prods.length)  { setProducts(prods);  setCsvURLFromRows(prods, monthKey()); }
-      if (sls.length)    setSales(sls);
+      if (prods.length) {
+        setProducts(prods);
+        // Set CSV URL silently — do NOT call setCsvURLFromRows here because that
+        // would re-broadcast cloud data to other devices and trigger another cloud
+        // sync, causing each device's stale snapshot to trample the others' data.
+        const _csv = productsWithBatchesToCSV(prods);
+        const _url = URL.createObjectURL(new Blob([_csv], { type: 'text/csv' }));
+        setCsvURL(prev => { if (prev) URL.revokeObjectURL(prev); return _url; });
+        setCsvFileName(`products_${monthKey()}.csv`);
+      }
+      if (sls.length) setSales(sls);
       if (creds.length)  setCredits(creds);
       if (supps.length)  setSuppliers(supps);
       if (exps.length)   setExpenses(exps);
@@ -8268,8 +8277,9 @@ function POSSystem() {
     const timestampISO = new Date().toISOString();
     const currentReceipt = receiptNumber;
 
-    const newSales = cart.map((item) => {
+    const newSales = cart.map((item, _i) => {
       return {
+        id: `${currentReceipt}_${item.barcode}_${_i}`,
         timestamp: timestampISO,
         receipt_number: currentReceipt,
         teller_number: TELLER_NUMBER,
