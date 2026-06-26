@@ -2086,6 +2086,8 @@ function LoginModal({ users, onLogin, onCancel, setShowLoading, cloudStatus, clo
 
     if (cloudActive && hasCloudOps) {
       // Try server-side PIN verification
+      let networkError = false;
+      let serverMessage = '';
       try {
         const base = settings.posmsUrl.replace(/\/api\/v1.*$/, '').replace(/\/$/, '');
         const r = await fetch(`${base}/api/v1/pos/operators/verify-pin`, {
@@ -2093,18 +2095,39 @@ function LoginModal({ users, onLogin, onCancel, setShowLoading, cloudStatus, clo
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ license_key: settings.posmsLicenseKey, username, pin: password }),
         });
+        const j = await r.json();
         if (r.ok) {
-          const j = await r.json();
           if (j.data?.valid) {
             const op = j.data.operator;
             loggedUser = { id: op.id, username: op.username, name: op.name, role: op.role, source: 'cloud' };
           }
+          // r.ok but valid:false → wrong credentials, no fallback
+        } else {
+          // Server returned an error (license issue, server error, etc.) — fall back to local users
+          serverMessage = j.message || '';
+          networkError = true;
         }
-      } catch {}
+      } catch {
+        networkError = true;
+      }
+
       if (!loggedUser) {
-        setError("Invalid username or PIN. Please try again.");
-        setBusy(false);
-        return;
+        if (networkError) {
+          // Server unreachable or returned an error — try local users as offline fallback
+          loggedUser = users.find((m) => m.username === username && m.password === password) || null;
+          if (!loggedUser) {
+            setError(serverMessage
+              ? `Server error: ${serverMessage}`
+              : "Could not reach the server. Check your connection or try again.");
+            setBusy(false);
+            return;
+          }
+        } else {
+          // Server said valid:false — definitely wrong credentials
+          setError("Invalid username or PIN. Please try again.");
+          setBusy(false);
+          return;
+        }
       }
     } else {
       // Offline — check local users
