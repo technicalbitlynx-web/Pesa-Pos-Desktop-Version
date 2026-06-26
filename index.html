@@ -7645,27 +7645,38 @@ function POSSystem() {
     }).catch(() => {});
   };
 
-  // Debounced full-data sync to cloud
-  const _doSyncAll = React.useCallback(() => {
+  // Debounced full-data sync to cloud.
+  // Reads from IndexedDB (not React state) so it always sends the CURRENT data
+  // regardless of when inside a setState callback it was scheduled.
+  const _doSyncAll = React.useCallback(async () => {
     const url = settings?.posmsUrl;
     const key = settings?.posmsLicenseKey;
     if (!url || !key || cloudStatus !== 'active') return;
     const base = url.replace(/\/api\/v1.*$/, '').replace(/\/$/, '');
+    const [prods, sls, creds, supps, exps, quots] = await Promise.all([
+      PesaDB.getAll('products'),
+      PesaDB.getAll('sales'),
+      PesaDB.getAll('credits'),
+      PesaDB.getAll('suppliers'),
+      PesaDB.getAll('expenses'),
+      PesaDB.getAll('quotations'),
+    ]);
+    const slog = (() => { try { return parseStockLogCSV(localStorage.getItem('pos_stock_log_csv') || ''); } catch { return []; } })();
     fetch(`${base}/api/v1/pos/sync-all`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         license_key: key,
-        products,
-        sales: recentSales(sales, 90),
-        credits,
-        suppliers,
-        expenses,
-        stock_log: stockLog,
-        quotations,
+        products: prods,
+        sales: recentSales(sls, 90),
+        credits: creds,
+        suppliers: supps,
+        expenses: exps,
+        stock_log: slog,
+        quotations: quots,
       }),
     }).catch(() => {});
-  }, [settings, cloudStatus, products, sales, credits, suppliers, expenses, stockLog, quotations]);
+  }, [settings, cloudStatus]); // no longer depends on state — reads IndexedDB directly
 
   const _syncDebounceRef = React.useRef(null);
   React.useEffect(() => {
@@ -8360,7 +8371,7 @@ function POSSystem() {
       setCsvURL(url);
       setCsvFileName(`products_${monthKey()}.csv`);
       PesaDB.putAll('products', next).catch(() => {});
-      socketPushData({ products: next.filter(p => cartBarcodes.has(p.barcode)) });
+      socketPushData({ products: next }); // push full list so all devices see complete catalog
       return next;
     });
 
