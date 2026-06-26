@@ -48,7 +48,11 @@ const PesaDB = {
   // ── Writes ──────────────────────────────────────────────────────────────────
   async putAll(table, rows) {
     const ts = new Date().toISOString();
-    const tagged = rows.map(r => ({ ...r, updatedAt: r.updatedAt || ts }));
+    const tagged = rows.map(r => ({
+      ...r,
+      id: r.id !== undefined ? r.id : (r.barcode !== undefined ? r.barcode : undefined),
+      updatedAt: r.updatedAt || ts,
+    }));
     await _db[table].bulkPut(tagged);
     return tagged;
   },
@@ -58,8 +62,13 @@ const PesaDB = {
   // ── Merge (last-write-wins per record) ──────────────────────────────────────
   async merge(table, incoming) {
     if (!incoming?.length) return;
-    const existing = await _db[table].bulkGet(incoming.map(r => r.id || r._seq));
-    const toWrite = incoming.filter((r, i) => {
+    // Normalise: assign id from barcode if missing (products use barcode as natural key)
+    const normalised = incoming.map(r => ({
+      ...r,
+      id: r.id !== undefined ? r.id : (r.barcode !== undefined ? r.barcode : undefined),
+    }));
+    const existing = await _db[table].bulkGet(normalised.map(r => r.id !== undefined ? r.id : r._seq));
+    const toWrite = normalised.filter((r, i) => {
       const ex = existing[i];
       if (!ex) return true;
       return (r.updatedAt || '') >= (ex.updatedAt || '');
@@ -395,6 +404,7 @@ function parseProductsWithBatchesCSV(text) {
   for (let i = 1; i < lines.length; i++) {
     const cols = splitCSVRow(lines[i]);
     const row = {
+      id: (hIndex("barcode") >= 0 ? (cols[hIndex("barcode")] || "").trim() : "") || undefined,
       barcode: hIndex("barcode") >= 0 ? (cols[hIndex("barcode")] || "").trim() : "",
       name: hIndex("name") >= 0 ? (cols[hIndex("name")] || "").trim() : "",
       price: hIndex("price") >= 0 ? Number((cols[hIndex("price")] || "").trim()) : 0,
@@ -2709,7 +2719,7 @@ function AddProductModal({ initialBarcode, initialProduct, onCancel, onSave }) {
               Cancel
             </button>
             <button disabled={!valid}
-              onClick={()=>onSave({barcode:barcode.trim(),name:name.trim(),price:Number(price),buy_price:Number(buyPrice),opening_stock:Number(opening),items_sold:initialProduct?.items_sold??0,available_stock:initialProduct?initialProduct.available_stock:Number(opening),reorder_level:Number(reorderLevel)||0,expiration_date:expirationDate||"",batches:initialProduct?.batches||[]})}
+              onClick={()=>onSave({id:barcode.trim(),barcode:barcode.trim(),name:name.trim(),price:Number(price),buy_price:Number(buyPrice),opening_stock:Number(opening),items_sold:initialProduct?.items_sold??0,available_stock:initialProduct?initialProduct.available_stock:Number(opening),reorder_level:Number(reorderLevel)||0,expiration_date:expirationDate||"",batches:initialProduct?.batches||[]})}
               style={{padding:'11px',borderRadius:'9px',border:'none',
                 background:valid?'linear-gradient(135deg,#059669,#10b981)':'#cbd5e1',
                 color:'#fff',fontWeight:700,cursor:valid?'pointer':'not-allowed',fontSize:'0.9rem',
