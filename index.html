@@ -2596,9 +2596,9 @@ function InventoryModal({ products, onClose, onDeleteSelected, onDeleteAll, onOp
               {label:'Export CSV', onClick:()=>{const csv=productsWithBatchesToCSV(products);const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download=`products_${new Date().toISOString().split('T')[0]}.csv`;document.body.appendChild(a);a.click();document.body.removeChild(a);}},
             ].map(btn=>(
               <button key={btn.label} onClick={btn.onClick}
-                style={{background:'rgba(255,255,255,0.15)',border:'1px solid rgba(255,255,255,0.2)',borderRadius:'8px',padding:'6px 14px',color:'#fff',fontWeight:600,cursor:'pointer',fontSize:'0.82rem',transition:'background 0.15s'}}
-                onMouseOver={e=>e.currentTarget.style.background='rgba(255,255,255,0.25)'}
-                onMouseOut={e=>e.currentTarget.style.background='rgba(255,255,255,0.15)'}
+                style={{background: btn.label==='Export CSV' ? 'rgba(16,185,129,0.85)' : 'rgba(255,255,255,0.15)', border: btn.label==='Export CSV' ? '1.5px solid rgba(16,185,129,0.95)' : '1px solid rgba(255,255,255,0.2)', borderRadius:'8px',padding:'6px 14px',color:'#fff',fontWeight: btn.label==='Export CSV' ? 700 : 600,cursor:'pointer',fontSize:'0.82rem',transition:'background 0.15s'}}
+                onMouseOver={e=>e.currentTarget.style.background= btn.label==='Export CSV' ? 'rgba(16,185,129,1)' : 'rgba(255,255,255,0.25)'}
+                onMouseOut={e=>e.currentTarget.style.background= btn.label==='Export CSV' ? 'rgba(16,185,129,0.85)' : 'rgba(255,255,255,0.15)'}
               >{btn.label}</button>
             ))}
             <button onClick={onClose}
@@ -4551,9 +4551,9 @@ function CreditManagementModal({ credits, sales, settings, onClose, onUpdateCred
           </div>
           <div style={{display:'flex',alignItems:'center',gap:'0.5rem'}}>
             <button onClick={exportCSV}
-              style={{background:'rgba(255,255,255,0.15)',border:'1px solid rgba(255,255,255,0.2)',borderRadius:'8px',padding:'6px 14px',color:'#fff',fontWeight:600,cursor:'pointer',fontSize:'0.82rem'}}
-              onMouseOver={e=>e.currentTarget.style.background='rgba(255,255,255,0.25)'}
-              onMouseOut={e=>e.currentTarget.style.background='rgba(255,255,255,0.15)'}
+              style={{background:'rgba(16,185,129,0.85)',border:'1.5px solid rgba(16,185,129,0.95)',borderRadius:'8px',padding:'6px 14px',color:'#fff',fontWeight:700,cursor:'pointer',fontSize:'0.82rem'}}
+              onMouseOver={e=>e.currentTarget.style.background='rgba(16,185,129,1)'}
+              onMouseOut={e=>e.currentTarget.style.background='rgba(16,185,129,0.85)'}
             >Export CSV</button>
             <button onClick={onClose}
               style={{background:'rgba(255,255,255,0.15)',border:'1px solid rgba(255,255,255,0.2)',borderRadius:'8px',padding:'6px 14px',color:'#fff',fontWeight:600,cursor:'pointer',fontSize:'0.82rem',display:'flex',alignItems:'center',gap:'5px'}}
@@ -5039,9 +5039,9 @@ function SupplierManagementModal({ suppliers, onClose, onUpdateSupplier, onDelet
             <button onClick={onOpenAddPurchase}
               style={{background:'rgba(16,185,129,0.25)',border:'1px solid rgba(16,185,129,0.4)',borderRadius:'8px',padding:'6px 14px',color:'#fff',fontWeight:700,cursor:'pointer',fontSize:'0.82rem'}}>+ Add Purchase</button>
             <button onClick={exportCSV}
-              style={{background:'rgba(255,255,255,0.15)',border:'1px solid rgba(255,255,255,0.2)',borderRadius:'8px',padding:'6px 14px',color:'#fff',fontWeight:600,cursor:'pointer',fontSize:'0.82rem'}}
-              onMouseOver={e=>e.currentTarget.style.background='rgba(255,255,255,0.25)'}
-              onMouseOut={e=>e.currentTarget.style.background='rgba(255,255,255,0.15)'}
+              style={{background:'rgba(16,185,129,0.85)',border:'1.5px solid rgba(16,185,129,0.95)',borderRadius:'8px',padding:'6px 14px',color:'#fff',fontWeight:700,cursor:'pointer',fontSize:'0.82rem'}}
+              onMouseOver={e=>e.currentTarget.style.background='rgba(16,185,129,1)'}
+              onMouseOut={e=>e.currentTarget.style.background='rgba(16,185,129,0.85)'}
             >Export CSV</button>
             <button onClick={onClose}
               style={{background:'rgba(255,255,255,0.15)',border:'1px solid rgba(255,255,255,0.2)',borderRadius:'8px',padding:'6px 14px',color:'#fff',fontWeight:600,cursor:'pointer',fontSize:'0.82rem',display:'flex',alignItems:'center',gap:'5px'}}
@@ -5691,9 +5691,9 @@ function UserManagementModal({ users, onClose, onSave, currentUser }) {
             <button onClick={()=>setShowAdd(v=>!v)}
               style={{background:'rgba(16,185,129,0.25)',border:'1px solid rgba(16,185,129,0.4)',borderRadius:'8px',padding:'6px 14px',color:'#fff',fontWeight:700,cursor:'pointer',fontSize:'0.82rem'}}>+ Add User</button>
             <button onClick={exportCSV}
-              style={{background:'rgba(255,255,255,0.15)',border:'1px solid rgba(255,255,255,0.2)',borderRadius:'8px',padding:'6px 14px',color:'#fff',fontWeight:600,cursor:'pointer',fontSize:'0.82rem'}}
-              onMouseOver={e=>e.currentTarget.style.background='rgba(255,255,255,0.25)'}
-              onMouseOut={e=>e.currentTarget.style.background='rgba(255,255,255,0.15)'}
+              style={{background:'rgba(16,185,129,0.85)',border:'1.5px solid rgba(16,185,129,0.95)',borderRadius:'8px',padding:'6px 14px',color:'#fff',fontWeight:700,cursor:'pointer',fontSize:'0.82rem'}}
+              onMouseOver={e=>e.currentTarget.style.background='rgba(16,185,129,1)'}
+              onMouseOut={e=>e.currentTarget.style.background='rgba(16,185,129,0.85)'}
             >Export CSV</button>
             <button onClick={onClose}
               style={{background:'rgba(255,255,255,0.15)',border:'1px solid rgba(255,255,255,0.2)',borderRadius:'8px',padding:'6px 14px',color:'#fff',fontWeight:600,cursor:'pointer',fontSize:'0.82rem',display:'flex',alignItems:'center',gap:'5px'}}
@@ -8493,9 +8493,9 @@ function POSSystem() {
     >
       {/* ── Mobile compact header ── */}
       {PLATFORM === 'mobile' ? (
-        <header className="sticky top-0 z-50 shadow-xl theme-header-gradient" style={{padding:'0 14px',height:'56px',display:'flex',alignItems:'center',justifyContent:'space-between',flexShrink:0}}>
+        <header className="sticky top-0 z-50 shadow-xl theme-header-gradient" style={{paddingLeft:'14px',paddingRight:'14px',paddingTop:'env(safe-area-inset-top)',paddingBottom:0,minHeight:'56px',display:'flex',alignItems:'center',justifyContent:'space-between',flexShrink:0}}>
           <div style={{display:'flex',alignItems:'center',gap:'8px',minWidth:0,flex:1}}>
-            {settings.showLogo && <img src="PesaIcon.png" alt="Pesa POS" style={{height:'28px',width:'auto',filter:'drop-shadow(0 2px 4px rgba(0,0,0,0.3))',flexShrink:0}} />}
+            <img src="PesaIcon.png" alt="Pesa POS" style={{height:'28px',width:'auto',filter:'drop-shadow(0 2px 4px rgba(0,0,0,0.3))',flexShrink:0}} />
             <div style={{minWidth:0}}>
               <div style={{color:'#fff',fontWeight:800,fontSize:'0.95rem',letterSpacing:'-0.01em',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{settings.companyName || 'Pesa POS'}</div>
               {settings.tagline && <div style={{color:'rgba(255,255,255,0.6)',fontSize:'0.62rem',marginTop:'-1px',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{settings.tagline}</div>}
@@ -8938,7 +8938,7 @@ function POSSystem() {
 
         {/* Manager Mobile Layout */}
         {isManager && PLATFORM === 'mobile' && (
-          <div style={{flex:1,display:'flex',flexDirection:'column',height:'calc(100dvh - 56px)',overflow:'hidden'}}>
+          <div style={{flex:1,display:'flex',flexDirection:'column',height:'calc(100dvh - 56px - env(safe-area-inset-top))',overflow:'hidden'}}>
             {mobileTab === 'sell' && (
               <div style={{flex:1,overflowY:'auto',WebkitOverflowScrolling:'touch',paddingBottom:'70px'}}>
                 <div style={{padding:'10px 12px',background:'#fff',borderBottom:'1px solid #e2e8f0',position:'sticky',top:0,zIndex:10}}>
@@ -9290,7 +9290,7 @@ function POSSystem() {
 
         {/* Teller Mobile Layout */}
         {!isManager && currentUser && PLATFORM === 'mobile' && (
-          <div style={{flex:1,display:'flex',flexDirection:'column',height:'calc(100dvh - 56px)',overflow:'hidden'}}>
+          <div style={{flex:1,display:'flex',flexDirection:'column',height:'calc(100dvh - 56px - env(safe-area-inset-top))',overflow:'hidden'}}>
             {mobileTab === 'sell' && (
               <div style={{flex:1,overflowY:'auto',WebkitOverflowScrolling:'touch',paddingBottom:'70px'}}>
                 <div style={{padding:'10px 12px',background:'#fff',borderBottom:'1px solid #e2e8f0',position:'sticky',top:0,zIndex:10}}>
